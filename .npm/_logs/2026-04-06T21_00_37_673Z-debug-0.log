@@ -1,0 +1,11 @@
+0 verbose cli /Users/macbook/.volta/tools/image/node/24.13.0/bin/node /Users/macbook/.volta/tools/image/node/24.13.0/lib/node_modules/npm/bin/npm-cli.js
+1 info using npm@11.6.2
+2 info using node@v24.13.0
+3 silly config load:file:/Users/macbook/.volta/tools/image/node/24.13.0/lib/node_modules/npm/npmrc
+4 silly config load:file:/Users/macbook/Desktop/Home/Development/doordrop/.npmrc
+5 silly config load:file:/Users/macbook/.volta/tools/image/node/24.13.0/etc/npmrc
+6 verbose title npm exec expo start --web --port 8086
+7 verbose argv "exec" "--" "expo" "start" "--web" "--port" "8086"
+8 verbose logfile logs-max:10 dir:/Users/macbook/Desktop/Home/Development/doordrop/.npm/_logs/2026-04-06T21_00_37_673Z-
+9 verbose logfile /Users/macbook/Desktop/Home/Development/doordrop/.npm/_logs/2026-04-06T21_00_37_673Z-debug-0.log
+10 silly logfile done cleaning log files

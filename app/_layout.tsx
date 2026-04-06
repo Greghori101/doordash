@@ -7,15 +7,19 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
+import { startAuthBootstrap } from '@/src/auth/bootstrap';
+import '@/src/location/background';
+import { registerForPushNotificationsAsync } from '@/src/notifications/register';
+import { useAuthStore } from '@/src/store/auth-store';
 
 export {
   // Catch any errors thrown by the Layout component.
-  ErrorBoundary,
+  ErrorBoundary
 } from 'expo-router';
 
 export const unstable_settings = {
   // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
+  initialRouteName: 'index',
 };
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -38,6 +42,11 @@ export default function RootLayout() {
     }
   }, [loaded]);
 
+  useEffect(() => {
+    const unsubscribe = startAuthBootstrap();
+    return unsubscribe;
+  }, []);
+
   if (!loaded) {
     return null;
   }
@@ -47,11 +56,25 @@ export default function RootLayout() {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  const { user, isBootstrapping } = useAuthStore();
+  const lastUidRef = (globalThis as any).__doordrop_lastPushUidRef ?? { current: null as string | null };
+  (globalThis as any).__doordrop_lastPushUidRef = lastUidRef;
+
+  useEffect(() => {
+    if (isBootstrapping) return;
+    const uid = user?.uid ?? null;
+    if (!uid) return;
+    if (lastUidRef.current === uid) return;
+    lastUidRef.current = uid;
+    registerForPushNotificationsAsync({ uid }).catch(() => { });
+  }, [isBootstrapping, user?.uid]);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(app)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
       </Stack>
     </ThemeProvider>

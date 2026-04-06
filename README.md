@@ -8,7 +8,7 @@ Single Expo (React Native) codebase with role-based UX for:
 
 ## Architecture Summary
 
-- Mobile: Expo + React Native + TypeScript + Expo Router (tabs template)
+- Mobile: Expo + React Native + TypeScript + Expo Router
 - Backend: Firebase Auth, Firestore, Cloud Functions, FCM, Storage
 - Real-time:
   - Firestore listeners for orders/status
@@ -25,7 +25,6 @@ Core Firestore collections:
 ## Getting Started
 
 ```bash
-cd doordash
 npm run ios
 ```
 
@@ -47,4 +46,3 @@ npm run web
 ## Project Notes
 
 - App idea + architecture references live in `.ai/` at the repo root.
-

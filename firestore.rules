@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function role() {
+      return isSignedIn() ? userDoc().data.role : null;
+    }
+
+    function adminId() {
+      return isSignedIn() ? userDoc().data.adminId : null;
+    }
+
+    function isAdmin() {
+      return role() == 'admin';
+    }
+
+    function isDriver() {
+      return role() == 'driver';
+    }
+
+    function isUser() {
+      return role() == 'user';
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow update: if isSignedIn() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    match /admins/{aid} {
+      allow read: if isSignedIn() && isAdmin() && adminId() == aid;
+      allow create: if isSignedIn() && request.auth.uid == aid;
+      allow update: if isSignedIn() && isAdmin() && adminId() == aid;
+      allow delete: if false;
+    }
+
+    match /drivers/{driverId} {
+      allow read: if isSignedIn() && (request.auth.uid == driverId || (isAdmin() && adminId() == resource.data.adminId));
+      allow create: if isSignedIn() && request.auth.uid == driverId;
+      allow update: if isSignedIn() && (request.auth.uid == driverId || (isAdmin() && adminId() == resource.data.adminId));
+      allow delete: if false;
+    }
+
+    match /orders/{orderId} {
+      allow read: if isSignedIn()
+        && (
+          resource.data.userId == request.auth.uid
+          || resource.data.driverId == request.auth.uid
+          || (isAdmin() && resource.data.adminId == adminId())
+        );
+
+      allow create: if isSignedIn()
+        && (
+          (isUser() && request.resource.data.userId == request.auth.uid)
+          || (isAdmin() && request.resource.data.adminId == adminId())
+        );
+
+      allow update: if false;
+
+      allow delete: if false;
+    }
+
+    match /order_events/{eventId} {
+      allow read: if isSignedIn();
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}
