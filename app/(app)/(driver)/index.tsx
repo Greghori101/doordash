@@ -1,5 +1,6 @@
 import * as Location from 'expo-location';
 import { GeoPoint, collection, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
+import { router } from 'expo-router';
 import React from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
@@ -181,9 +182,11 @@ export default function DriverHome() {
               gap: 6,
             }}
           >
-            <Text selectable style={{ fontWeight: '800' }}>
-              {o.id}
-            </Text>
+            <Pressable onPress={() => router.push(`/(app)/(driver)/orders/${o.id}`)}>
+              <Text selectable style={{ fontWeight: '800' }}>
+                {o.id}
+              </Text>
+            </Pressable>
             <Text selectable>status: {o.status}</Text>
             {o.status === 'assigned' && !o.driverAcceptedAt ? (
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>

@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
+import { signOut } from 'firebase/auth';
 import React from 'react';
 import { Pressable, Text } from 'react-native';
-import { signOut } from 'firebase/auth';
 
 import { firebaseAuth } from '@/src/firebase/client';
 
@@ -21,7 +21,7 @@ export default function DriverLayout() {
           ),
         }}
       />
+      <Stack.Screen name="orders/[id]" options={{ title: 'Order' }} />
     </Stack>
   );
 }
-

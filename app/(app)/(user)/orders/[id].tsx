@@ -1,11 +1,12 @@
 import { useLocalSearchParams } from 'expo-router';
 import { doc, onSnapshot } from 'firebase/firestore';
 import React from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { onValue, ref } from 'firebase/database';
 
 import { OrderMap } from '@/components/order-map';
 import { rtdb, firestore } from '@/src/firebase/client';
+import { transitionOrder } from '@/src/orders/transition';
 
 type OrderDoc = {
   id: string;
@@ -26,6 +27,7 @@ export default function OrderScreen() {
   const [order, setOrder] = React.useState<OrderDoc | null>(null);
   const [driver, setDriver] = React.useState<DriverDoc | null>(null);
   const [driverLive, setDriverLive] = React.useState<{ lat: number; lng: number } | null>(null);
+  const [busy, setBusy] = React.useState(false);
 
   React.useEffect(() => {
     if (!orderId) return;
@@ -102,6 +104,18 @@ export default function OrderScreen() {
         ? { latitude: pickup.latitude, longitude: pickup.longitude, latitudeDelta: 0.02, longitudeDelta: 0.02 }
         : { latitude: 37.78825, longitude: -122.4324, latitudeDelta: 0.02, longitudeDelta: 0.02 };
 
+  async function cancelOrder() {
+    if (!orderId) return;
+    setBusy(true);
+    try {
+      await transitionOrder({ action: 'user_cancel', orderId });
+    } catch (e: any) {
+      Alert.alert('Cancel failed', e?.message ?? 'Unknown error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: 16, gap: 12 }}>
       <View style={{ gap: 4 }}>
@@ -115,6 +129,24 @@ export default function OrderScreen() {
       <View style={{ height: 360, borderRadius: 16, borderCurve: 'continuous', overflow: 'hidden' }}>
         <OrderMap region={region} pickup={pickup} dropoff={dropoff} driver={driverLocation} />
       </View>
+
+      {order?.status === 'pending' || order?.status === 'assigned' ? (
+        <Pressable
+          disabled={busy}
+          onPress={cancelOrder}
+          style={{
+            paddingVertical: 12,
+            paddingHorizontal: 12,
+            borderRadius: 12,
+            borderCurve: 'continuous',
+            backgroundColor: busy ? 'rgba(0,0,0,0.15)' : 'rgba(255,0,0,0.12)',
+          }}
+        >
+          <Text selectable style={{ textAlign: 'center', fontWeight: '800' }}>
+            Cancel order
+          </Text>
+        </Pressable>
+      ) : null}
     </ScrollView>
   );
 }
