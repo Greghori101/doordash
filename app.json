@@ -34,6 +34,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b550314f-9f71-44c4-aa25-b59c357d5273"
+      }
+    },
+    "owner": "hoceyne"
   }
 }
