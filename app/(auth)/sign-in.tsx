@@ -4,6 +4,7 @@ import React from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { firebaseAuth } from '@/src/firebase/client';
+import { useAppTheme } from '@/src/theme/theme';
 
 function getAuthErrorMessage(error: any) {
   const code = String(error?.code ?? '');
@@ -22,6 +23,7 @@ function getAuthErrorMessage(error: any) {
 }
 
 export default function SignInScreen() {
+  const { colors } = useAppTheme();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [busy, setBusy] = React.useState(false);
@@ -62,13 +64,19 @@ export default function SignInScreen() {
   }
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: 16, gap: 12 }}>
-      <Text selectable style={{ fontSize: 22, fontWeight: '700' }}>
+    <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
+      style={{ backgroundColor: colors.background }}
+      contentContainerStyle={{ padding: 16, gap: 12 }}
+    >
+      <Text selectable style={{ fontSize: 22, fontWeight: '700', color: colors.text }}>
         DoorDrop
       </Text>
 
       <View style={{ gap: 8 }}>
-        <Text selectable>Email</Text>
+        <Text selectable style={{ color: colors.text }}>
+          Email
+        </Text>
         <TextInput
           autoCapitalize="none"
           autoCorrect={false}
@@ -76,29 +84,35 @@ export default function SignInScreen() {
           value={email}
           onChangeText={setEmail}
           placeholder="you@example.com"
+          placeholderTextColor={colors.mutedText}
           style={{
             borderWidth: 1,
-            borderColor: 'rgba(0,0,0,0.12)',
+            borderColor: colors.border,
             padding: 12,
             borderRadius: 12,
             borderCurve: 'continuous',
+            color: colors.text,
           }}
         />
       </View>
 
       <View style={{ gap: 8 }}>
-        <Text selectable>Password</Text>
+        <Text selectable style={{ color: colors.text }}>
+          Password
+        </Text>
         <TextInput
           value={password}
           onChangeText={setPassword}
           placeholder="••••••••"
+          placeholderTextColor={colors.mutedText}
           secureTextEntry
           style={{
             borderWidth: 1,
-            borderColor: 'rgba(0,0,0,0.12)',
+            borderColor: colors.border,
             padding: 12,
             borderRadius: 12,
             borderCurve: 'continuous',
+            color: colors.text,
           }}
         />
       </View>
@@ -110,10 +124,10 @@ export default function SignInScreen() {
           padding: 14,
           borderRadius: 14,
           borderCurve: 'continuous',
-          backgroundColor: canSubmit ? 'black' : 'rgba(0,0,0,0.15)',
+          backgroundColor: canSubmit ? colors.primary : colors.disabled,
         }}
       >
-        <Text selectable style={{ color: 'white', textAlign: 'center', fontWeight: '700' }}>
+        <Text selectable style={{ color: colors.primaryText, textAlign: 'center', fontWeight: '700' }}>
           Sign in
         </Text>
       </Pressable>
@@ -125,10 +139,10 @@ export default function SignInScreen() {
           padding: 14,
           borderRadius: 14,
           borderCurve: 'continuous',
-          backgroundColor: canSubmit ? 'rgba(0,0,0,0.08)' : 'rgba(0,0,0,0.04)',
+          backgroundColor: canSubmit ? colors.secondary : colors.card,
         }}
       >
-        <Text selectable style={{ textAlign: 'center', fontWeight: '700' }}>
+        <Text selectable style={{ textAlign: 'center', fontWeight: '700', color: colors.text }}>
           Create account
         </Text>
       </Pressable>

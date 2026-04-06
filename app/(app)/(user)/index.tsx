@@ -6,6 +6,7 @@ import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-nativ
 
 import { firestore } from '@/src/firebase/client';
 import { useAuthStore } from '@/src/store/auth-store';
+import { useAppTheme } from '@/src/theme/theme';
 
 type OrderDoc = {
   id: string;
@@ -15,6 +16,7 @@ type OrderDoc = {
 };
 
 export default function UserHome() {
+  const { colors } = useAppTheme();
   const user = useAuthStore((s) => s.user);
   const uid = user?.uid;
 
@@ -92,26 +94,34 @@ export default function UserHome() {
   }
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: 16, gap: 16 }}>
+    <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
+      style={{ backgroundColor: colors.background }}
+      contentContainerStyle={{ padding: 16, gap: 16 }}
+    >
       <View style={{ gap: 8 }}>
-        <Text selectable style={{ fontSize: 20, fontWeight: '800' }}>
+        <Text selectable style={{ fontSize: 20, fontWeight: '800', color: colors.text }}>
           Create Order
         </Text>
 
         <View style={{ gap: 6 }}>
-          <Text selectable>Tenant adminId</Text>
+          <Text selectable style={{ color: colors.text }}>
+            Tenant adminId
+          </Text>
           <TextInput
             value={adminId}
             onChangeText={setAdminId}
             autoCapitalize="none"
             autoCorrect={false}
             placeholder="adminId"
+            placeholderTextColor={colors.mutedText}
             style={{
               borderWidth: 1,
-              borderColor: 'rgba(0,0,0,0.12)',
+              borderColor: colors.border,
               padding: 12,
               borderRadius: 12,
               borderCurve: 'continuous',
+              color: colors.text,
             }}
           />
         </View>
@@ -123,66 +133,78 @@ export default function UserHome() {
             paddingHorizontal: 12,
             borderRadius: 12,
             borderCurve: 'continuous',
-            backgroundColor: 'rgba(0,0,0,0.08)',
+            backgroundColor: colors.secondary,
           }}
         >
-          <Text selectable style={{ textAlign: 'center', fontWeight: '800' }}>
+          <Text selectable style={{ textAlign: 'center', fontWeight: '800', color: colors.text }}>
             Use current pickup
           </Text>
         </Pressable>
 
-        <Text selectable style={{ fontVariant: ['tabular-nums'] }}>
+        <Text selectable style={{ fontVariant: ['tabular-nums'], color: colors.mutedText }}>
           pickup: {pickup ? `${pickup.lat.toFixed(5)}, ${pickup.lng.toFixed(5)}` : '—'}
         </Text>
 
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <View style={{ flex: 1, gap: 6 }}>
-            <Text selectable>Dropoff lat</Text>
+            <Text selectable style={{ color: colors.text }}>
+              Dropoff lat
+            </Text>
             <TextInput
               value={dropoffLat}
               onChangeText={setDropoffLat}
               placeholder="36.7"
+              placeholderTextColor={colors.mutedText}
               keyboardType="decimal-pad"
               style={{
                 borderWidth: 1,
-                borderColor: 'rgba(0,0,0,0.12)',
+                borderColor: colors.border,
                 padding: 12,
                 borderRadius: 12,
                 borderCurve: 'continuous',
+                color: colors.text,
               }}
             />
           </View>
           <View style={{ flex: 1, gap: 6 }}>
-            <Text selectable>Dropoff lng</Text>
+            <Text selectable style={{ color: colors.text }}>
+              Dropoff lng
+            </Text>
             <TextInput
               value={dropoffLng}
               onChangeText={setDropoffLng}
               placeholder="3.0"
+              placeholderTextColor={colors.mutedText}
               keyboardType="decimal-pad"
               style={{
                 borderWidth: 1,
-                borderColor: 'rgba(0,0,0,0.12)',
+                borderColor: colors.border,
                 padding: 12,
                 borderRadius: 12,
                 borderCurve: 'continuous',
+                color: colors.text,
               }}
             />
           </View>
         </View>
 
         <View style={{ gap: 6 }}>
-          <Text selectable>Price</Text>
+          <Text selectable style={{ color: colors.text }}>
+            Price
+          </Text>
           <TextInput
             value={price}
             onChangeText={setPrice}
             placeholder="12"
+            placeholderTextColor={colors.mutedText}
             keyboardType="decimal-pad"
             style={{
               borderWidth: 1,
-              borderColor: 'rgba(0,0,0,0.12)',
+              borderColor: colors.border,
               padding: 12,
               borderRadius: 12,
               borderCurve: 'continuous',
+              color: colors.text,
             }}
           />
         </View>
@@ -199,10 +221,13 @@ export default function UserHome() {
                   paddingHorizontal: 14,
                   borderRadius: 999,
                   borderCurve: 'continuous',
-                  backgroundColor: selected ? 'black' : 'rgba(0,0,0,0.08)',
+                  backgroundColor: selected ? colors.primary : colors.secondary,
                 }}
               >
-                <Text selectable style={{ color: selected ? 'white' : 'black', fontWeight: '800', textTransform: 'capitalize' }}>
+                <Text
+                  selectable
+                  style={{ color: selected ? colors.primaryText : colors.text, fontWeight: '800', textTransform: 'capitalize' }}
+                >
                   {m}
                 </Text>
               </Pressable>
@@ -218,20 +243,20 @@ export default function UserHome() {
             paddingHorizontal: 12,
             borderRadius: 14,
             borderCurve: 'continuous',
-            backgroundColor: busy ? 'rgba(0,0,0,0.15)' : 'black',
+            backgroundColor: busy ? colors.disabled : colors.primary,
           }}
         >
-          <Text selectable style={{ color: 'white', textAlign: 'center', fontWeight: '800' }}>
+          <Text selectable style={{ color: colors.primaryText, textAlign: 'center', fontWeight: '800' }}>
             Create order
           </Text>
         </Pressable>
       </View>
 
       <View style={{ gap: 10 }}>
-        <Text selectable style={{ fontSize: 18, fontWeight: '800' }}>
+        <Text selectable style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>
           My Orders
         </Text>
-        {orders.length === 0 ? <Text selectable>No orders yet.</Text> : null}
+        {orders.length === 0 ? <Text selectable style={{ color: colors.mutedText }}>No orders yet.</Text> : null}
         {orders.map((o) => (
           <Pressable
             key={o.id}
@@ -240,14 +265,14 @@ export default function UserHome() {
               padding: 12,
               borderRadius: 14,
               borderCurve: 'continuous',
-              backgroundColor: 'rgba(0,0,0,0.06)',
+              backgroundColor: colors.card,
               gap: 6,
             }}
           >
-            <Text selectable style={{ fontWeight: '800' }}>
+            <Text selectable style={{ fontWeight: '800', color: colors.text }}>
               {o.id}
             </Text>
-            <Text selectable>
+            <Text selectable style={{ color: colors.text }}>
               {o.status}
               {o.driverId ? ` · driver: ${o.driverId}` : ''}
             </Text>

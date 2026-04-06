@@ -7,6 +7,7 @@ import { onValue, ref } from 'firebase/database';
 import { OrderMap } from '@/components/order-map';
 import { rtdb, firestore } from '@/src/firebase/client';
 import { transitionOrder } from '@/src/orders/transition';
+import { useAppTheme } from '@/src/theme/theme';
 
 type OrderDoc = {
   id: string;
@@ -24,6 +25,7 @@ type DriverDoc = {
 };
 
 export default function OrderScreen() {
+  const { colors } = useAppTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const orderId = typeof id === 'string' ? id : '';
   const [order, setOrder] = React.useState<OrderDoc | null>(null);
@@ -119,14 +121,18 @@ export default function OrderScreen() {
   }
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: 16, gap: 12 }}>
+    <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
+      style={{ backgroundColor: colors.background }}
+      contentContainerStyle={{ padding: 16, gap: 12 }}
+    >
       <View style={{ gap: 4 }}>
-        <Text selectable style={{ fontSize: 18, fontWeight: '800' }}>
+        <Text selectable style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>
           {orderId}
         </Text>
-        <Text selectable>status: {order?.status ?? '—'}</Text>
-        <Text selectable>{order?.driverId ? `driver: ${order.driverId}` : 'driver: —'}</Text>
-        <Text selectable>
+        <Text selectable style={{ color: colors.text }}>status: {order?.status ?? '—'}</Text>
+        <Text selectable style={{ color: colors.text }}>{order?.driverId ? `driver: ${order.driverId}` : 'driver: —'}</Text>
+        <Text selectable style={{ color: colors.mutedText }}>
           payment: {(order?.paymentMethod ?? 'cash').toUpperCase()} · {(order?.paymentStatus ?? 'unpaid').toUpperCase()}
         </Text>
       </View>
@@ -144,10 +150,10 @@ export default function OrderScreen() {
             paddingHorizontal: 12,
             borderRadius: 12,
             borderCurve: 'continuous',
-            backgroundColor: busy ? 'rgba(0,0,0,0.15)' : 'rgba(255,0,0,0.12)',
+            backgroundColor: busy ? colors.disabled : colors.dangerBg,
           }}
         >
-          <Text selectable style={{ textAlign: 'center', fontWeight: '800' }}>
+          <Text selectable style={{ textAlign: 'center', fontWeight: '800', color: colors.dangerText }}>
             Cancel order
           </Text>
         </Pressable>

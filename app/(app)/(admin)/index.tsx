@@ -6,6 +6,7 @@ import { AdminMap } from '@/components/admin-map';
 import { firestore } from '@/src/firebase/client';
 import { transitionOrder } from '@/src/orders/transition';
 import { useAuthStore } from '@/src/store/auth-store';
+import { useAppTheme } from '@/src/theme/theme';
 
 type DriverDoc = {
   id: string;
@@ -29,6 +30,7 @@ type OrderDoc = {
 };
 
 export default function AdminHome() {
+  const { colors } = useAppTheme();
   const user = useAuthStore((s) => s.user);
   const profile = useAuthStore((s) => s.profile);
   const adminId = profile?.adminId;
@@ -143,16 +145,16 @@ export default function AdminHome() {
 
   const selectedPickup = selectedOrder?.pickupLocation
     ? {
-        latitude: selectedOrder.pickupLocation.latitude ?? selectedOrder.pickupLocation._lat,
-        longitude: selectedOrder.pickupLocation.longitude ?? selectedOrder.pickupLocation._long,
-      }
+      latitude: selectedOrder.pickupLocation.latitude ?? selectedOrder.pickupLocation._lat,
+      longitude: selectedOrder.pickupLocation.longitude ?? selectedOrder.pickupLocation._long,
+    }
     : null;
 
   const selectedDropoff = selectedOrder?.dropoffLocation
     ? {
-        latitude: selectedOrder.dropoffLocation.latitude ?? selectedOrder.dropoffLocation._lat,
-        longitude: selectedOrder.dropoffLocation.longitude ?? selectedOrder.dropoffLocation._long,
-      }
+      latitude: selectedOrder.dropoffLocation.latitude ?? selectedOrder.dropoffLocation._lat,
+      longitude: selectedOrder.dropoffLocation.longitude ?? selectedOrder.dropoffLocation._long,
+    }
     : null;
 
   const driverMarkers = React.useMemo(() => {
@@ -168,12 +170,16 @@ export default function AdminHome() {
   }, [drivers]);
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: 16, gap: 16 }}>
+    <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
+      style={{ backgroundColor: colors.background }}
+      contentContainerStyle={{ padding: 16, gap: 16 }}
+    >
       <View style={{ gap: 6 }}>
-        <Text selectable style={{ fontSize: 20, fontWeight: '800' }}>
+        <Text selectable style={{ fontSize: 20, fontWeight: '800', color: colors.text }}>
           Tenant
         </Text>
-        <Text selectable style={{ fontVariant: ['tabular-nums'] }}>
+        <Text selectable style={{ fontVariant: ['tabular-nums'], color: colors.mutedText }}>
           adminId: {adminId ?? '—'}
         </Text>
       </View>
@@ -183,58 +189,70 @@ export default function AdminHome() {
       </View>
 
       <View style={{ gap: 10 }}>
-        <Text selectable style={{ fontSize: 18, fontWeight: '800' }}>
+        <Text selectable style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>
           Create Order
         </Text>
 
         <View style={{ gap: 6 }}>
-          <Text selectable>User ID (optional)</Text>
+          <Text selectable style={{ color: colors.text }}>
+            User ID (optional)
+          </Text>
           <TextInput
             value={orderUserId}
             onChangeText={setOrderUserId}
             autoCapitalize="none"
             autoCorrect={false}
             placeholder="defaults to your uid"
+            placeholderTextColor={colors.mutedText}
             style={{
               borderWidth: 1,
-              borderColor: 'rgba(0,0,0,0.12)',
+              borderColor: colors.border,
               padding: 12,
               borderRadius: 12,
               borderCurve: 'continuous',
+              color: colors.text,
             }}
           />
         </View>
 
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <View style={{ flex: 1, gap: 6 }}>
-            <Text selectable>Pickup lat</Text>
+            <Text selectable style={{ color: colors.text }}>
+              Pickup lat
+            </Text>
             <TextInput
               value={pickupLat}
               onChangeText={setPickupLat}
               placeholder="36.7"
+              placeholderTextColor={colors.mutedText}
               keyboardType="decimal-pad"
               style={{
                 borderWidth: 1,
-                borderColor: 'rgba(0,0,0,0.12)',
+                borderColor: colors.border,
                 padding: 12,
                 borderRadius: 12,
                 borderCurve: 'continuous',
+                color: colors.text,
               }}
             />
           </View>
           <View style={{ flex: 1, gap: 6 }}>
-            <Text selectable>Pickup lng</Text>
+            <Text selectable style={{ color: colors.text }}>
+              Pickup lng
+            </Text>
             <TextInput
               value={pickupLng}
               onChangeText={setPickupLng}
               placeholder="3.0"
+              placeholderTextColor={colors.mutedText}
               keyboardType="decimal-pad"
               style={{
                 borderWidth: 1,
-                borderColor: 'rgba(0,0,0,0.12)',
+                borderColor: colors.border,
                 padding: 12,
                 borderRadius: 12,
                 borderCurve: 'continuous',
+                color: colors.text,
               }}
             />
           </View>
@@ -242,52 +260,64 @@ export default function AdminHome() {
 
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <View style={{ flex: 1, gap: 6 }}>
-            <Text selectable>Dropoff lat</Text>
+            <Text selectable style={{ color: colors.text }}>
+              Dropoff lat
+            </Text>
             <TextInput
               value={dropoffLat}
               onChangeText={setDropoffLat}
               placeholder="36.7"
+              placeholderTextColor={colors.mutedText}
               keyboardType="decimal-pad"
               style={{
                 borderWidth: 1,
-                borderColor: 'rgba(0,0,0,0.12)',
+                borderColor: colors.border,
                 padding: 12,
                 borderRadius: 12,
                 borderCurve: 'continuous',
+                color: colors.text,
               }}
             />
           </View>
           <View style={{ flex: 1, gap: 6 }}>
-            <Text selectable>Dropoff lng</Text>
+            <Text selectable style={{ color: colors.text }}>
+              Dropoff lng
+            </Text>
             <TextInput
               value={dropoffLng}
               onChangeText={setDropoffLng}
               placeholder="3.0"
+              placeholderTextColor={colors.mutedText}
               keyboardType="decimal-pad"
               style={{
                 borderWidth: 1,
-                borderColor: 'rgba(0,0,0,0.12)',
+                borderColor: colors.border,
                 padding: 12,
                 borderRadius: 12,
                 borderCurve: 'continuous',
+                color: colors.text,
               }}
             />
           </View>
         </View>
 
         <View style={{ gap: 6 }}>
-          <Text selectable>Price</Text>
+          <Text selectable style={{ color: colors.text }}>
+            Price
+          </Text>
           <TextInput
             value={price}
             onChangeText={setPrice}
             placeholder="12"
+            placeholderTextColor={colors.mutedText}
             keyboardType="decimal-pad"
             style={{
               borderWidth: 1,
-              borderColor: 'rgba(0,0,0,0.12)',
+              borderColor: colors.border,
               padding: 12,
               borderRadius: 12,
               borderCurve: 'continuous',
+              color: colors.text,
             }}
           />
         </View>
@@ -304,10 +334,13 @@ export default function AdminHome() {
                   paddingHorizontal: 14,
                   borderRadius: 999,
                   borderCurve: 'continuous',
-                  backgroundColor: selected ? 'black' : 'rgba(0,0,0,0.08)',
+                  backgroundColor: selected ? colors.primary : colors.secondary,
                 }}
               >
-                <Text selectable style={{ color: selected ? 'white' : 'black', fontWeight: '800', textTransform: 'capitalize' }}>
+                <Text
+                  selectable
+                  style={{ color: selected ? colors.primaryText : colors.text, fontWeight: '800', textTransform: 'capitalize' }}
+                >
                   {m}
                 </Text>
               </Pressable>
@@ -323,20 +356,20 @@ export default function AdminHome() {
             paddingHorizontal: 12,
             borderRadius: 12,
             borderCurve: 'continuous',
-            backgroundColor: busy ? 'rgba(0,0,0,0.15)' : 'black',
+            backgroundColor: busy ? colors.disabled : colors.primary,
           }}
         >
-          <Text selectable style={{ color: 'white', textAlign: 'center', fontWeight: '800' }}>
+          <Text selectable style={{ color: colors.primaryText, textAlign: 'center', fontWeight: '800' }}>
             Create pending order
           </Text>
         </Pressable>
       </View>
 
       <View style={{ gap: 10 }}>
-        <Text selectable style={{ fontSize: 18, fontWeight: '800' }}>
+        <Text selectable style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>
           Drivers
         </Text>
-        {drivers.length === 0 ? <Text selectable>No drivers yet.</Text> : null}
+        {drivers.length === 0 ? <Text selectable style={{ color: colors.mutedText }}>No drivers yet.</Text> : null}
         {drivers.map((d) => (
           <View
             key={d.id}
@@ -344,14 +377,14 @@ export default function AdminHome() {
               padding: 12,
               borderRadius: 14,
               borderCurve: 'continuous',
-              backgroundColor: 'rgba(0,0,0,0.06)',
+              backgroundColor: colors.card,
               gap: 6,
             }}
           >
-            <Text selectable style={{ fontWeight: '800' }}>
+            <Text selectable style={{ fontWeight: '800', color: colors.text }}>
               {d.id}
             </Text>
-            <Text selectable>
+            <Text selectable style={{ color: colors.text }}>
               {d.isOnline ? 'online' : 'offline'} · {d.status}
             </Text>
           </View>
@@ -359,10 +392,10 @@ export default function AdminHome() {
       </View>
 
       <View style={{ gap: 10 }}>
-        <Text selectable style={{ fontSize: 18, fontWeight: '800' }}>
+        <Text selectable style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>
           Orders
         </Text>
-        {orders.length === 0 ? <Text selectable>No orders yet.</Text> : null}
+        {orders.length === 0 ? <Text selectable style={{ color: colors.mutedText }}>No orders yet.</Text> : null}
         {orders.map((o) => (
           <View
             key={o.id}
@@ -370,21 +403,21 @@ export default function AdminHome() {
               padding: 12,
               borderRadius: 14,
               borderCurve: 'continuous',
-              backgroundColor: 'rgba(0,0,0,0.06)',
+              backgroundColor: colors.card,
               gap: 8,
             }}
           >
             <View style={{ gap: 4 }}>
               <Pressable onPress={() => setSelectedOrderId(o.id)}>
-                <Text selectable style={{ fontWeight: '800' }}>
+                <Text selectable style={{ fontWeight: '800', color: colors.text }}>
                   {o.id}
                 </Text>
               </Pressable>
-              <Text selectable>
+              <Text selectable style={{ color: colors.text }}>
                 status: {o.status}
                 {o.driverId ? ` · driver: ${o.driverId}` : ''}
               </Text>
-              <Text selectable>
+              <Text selectable style={{ color: colors.mutedText }}>
                 payment: {(o.paymentMethod ?? 'cash').toUpperCase()} · {(o.paymentStatus ?? 'unpaid').toUpperCase()}
               </Text>
             </View>
@@ -397,10 +430,10 @@ export default function AdminHome() {
                   paddingHorizontal: 12,
                   borderRadius: 12,
                   borderCurve: 'continuous',
-                  backgroundColor: 'black',
+                  backgroundColor: colors.primary,
                 }}
               >
-                <Text selectable style={{ color: 'white', textAlign: 'center', fontWeight: '800' }}>
+                <Text selectable style={{ color: colors.primaryText, textAlign: 'center', fontWeight: '800' }}>
                   Assign first idle driver
                 </Text>
               </Pressable>
@@ -414,10 +447,10 @@ export default function AdminHome() {
                   paddingHorizontal: 12,
                   borderRadius: 12,
                   borderCurve: 'continuous',
-                  backgroundColor: 'rgba(0,0,0,0.08)',
+                  backgroundColor: colors.secondary,
                 }}
               >
-                <Text selectable style={{ textAlign: 'center', fontWeight: '800' }}>
+                <Text selectable style={{ textAlign: 'center', fontWeight: '800', color: colors.text }}>
                   Reassign to idle driver
                 </Text>
               </Pressable>

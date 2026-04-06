@@ -6,11 +6,11 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/components/useColorScheme';
 import { startAuthBootstrap } from '@/src/auth/bootstrap';
 import '@/src/location/background';
 import { registerForPushNotificationsAsync } from '@/src/notifications/register';
 import { useAuthStore } from '@/src/store/auth-store';
+import { AppThemeProvider, useAppTheme } from '@/src/theme/theme';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -51,11 +51,15 @@ export default function RootLayout() {
     return null;
   }
 
-  return <RootLayoutNav />;
+  return (
+    <AppThemeProvider>
+      <RootLayoutNav />
+    </AppThemeProvider>
+  );
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  const { scheme } = useAppTheme();
   const { user, isBootstrapping } = useAuthStore();
   const lastUidRef = (globalThis as any).__doordrop_lastPushUidRef ?? { current: null as string | null };
   (globalThis as any).__doordrop_lastPushUidRef = lastUidRef;
@@ -70,7 +74,7 @@ function RootLayoutNav() {
   }, [isBootstrapping, user?.uid]);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />

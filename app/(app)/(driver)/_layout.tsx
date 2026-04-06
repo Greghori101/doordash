@@ -1,8 +1,9 @@
 import { Stack } from 'expo-router';
 import { signOut } from 'firebase/auth';
 import React from 'react';
-import { Pressable, Text } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { firebaseAuth } from '@/src/firebase/client';
 
 export default function DriverLayout() {
@@ -13,11 +14,14 @@ export default function DriverLayout() {
         options={{
           title: 'Driver',
           headerRight: () => (
-            <Pressable onPress={() => signOut(firebaseAuth)} style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
-              <Text selectable style={{ fontWeight: '700' }}>
-                Sign out
-              </Text>
-            </Pressable>
+            <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', paddingRight: 8 }}>
+              <ThemeToggle />
+              <Pressable onPress={() => signOut(firebaseAuth)} style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
+                <Text selectable style={{ fontWeight: '700' }}>
+                  Sign out
+                </Text>
+              </Pressable>
+            </View>
           ),
         }}
       />

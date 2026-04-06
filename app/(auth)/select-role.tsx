@@ -1,11 +1,13 @@
+import { router } from 'expo-router';
 import React from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
 
 import { setCurrentUserRole } from '@/src/auth/set-role';
 import type { AppRole } from '@/src/auth/types';
+import { useAppTheme } from '@/src/theme/theme';
 
 export default function SelectRoleScreen() {
+  const { colors } = useAppTheme();
   const [role, setRole] = React.useState<AppRole>('user');
   const [adminId, setAdminId] = React.useState('');
   const [busy, setBusy] = React.useState(false);
@@ -23,8 +25,12 @@ export default function SelectRoleScreen() {
   }
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: 16, gap: 12 }}>
-      <Text selectable style={{ fontSize: 18, fontWeight: '700' }}>
+    <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
+      style={{ backgroundColor: colors.background }}
+      contentContainerStyle={{ padding: 16, gap: 12 }}
+    >
+      <Text selectable style={{ fontSize: 18, fontWeight: '700', color: colors.text }}>
         Choose how you want to use the app
       </Text>
 
@@ -40,10 +46,13 @@ export default function SelectRoleScreen() {
                 paddingHorizontal: 14,
                 borderRadius: 999,
                 borderCurve: 'continuous',
-                backgroundColor: selected ? 'black' : 'rgba(0,0,0,0.08)',
+                backgroundColor: selected ? colors.primary : colors.secondary,
               }}
             >
-              <Text selectable style={{ color: selected ? 'white' : 'black', fontWeight: '700', textTransform: 'capitalize' }}>
+              <Text
+                selectable
+                style={{ color: selected ? colors.primaryText : colors.text, fontWeight: '700', textTransform: 'capitalize' }}
+              >
                 {r}
               </Text>
             </Pressable>
@@ -53,19 +62,23 @@ export default function SelectRoleScreen() {
 
       {role === 'driver' ? (
         <View style={{ gap: 8 }}>
-          <Text selectable>Admin ID</Text>
+          <Text selectable style={{ color: colors.text }}>
+            Admin ID
+          </Text>
           <TextInput
             value={adminId}
             onChangeText={setAdminId}
             placeholder="Paste your adminId"
+            placeholderTextColor={colors.mutedText}
             autoCapitalize="none"
             autoCorrect={false}
             style={{
               borderWidth: 1,
-              borderColor: 'rgba(0,0,0,0.12)',
+              borderColor: colors.border,
               padding: 12,
               borderRadius: 12,
               borderCurve: 'continuous',
+              color: colors.text,
             }}
           />
         </View>
@@ -78,14 +91,13 @@ export default function SelectRoleScreen() {
           padding: 14,
           borderRadius: 14,
           borderCurve: 'continuous',
-          backgroundColor: busy ? 'rgba(0,0,0,0.15)' : 'black',
+          backgroundColor: busy ? colors.disabled : colors.primary,
         }}
       >
-        <Text selectable style={{ color: 'white', textAlign: 'center', fontWeight: '700' }}>
+        <Text selectable style={{ color: colors.primaryText, textAlign: 'center', fontWeight: '700' }}>
           Continue
         </Text>
       </Pressable>
     </ScrollView>
   );
 }
-

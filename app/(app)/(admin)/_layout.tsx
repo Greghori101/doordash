@@ -1,8 +1,9 @@
 import { Stack } from 'expo-router';
-import React from 'react';
-import { Pressable, Text } from 'react-native';
 import { signOut } from 'firebase/auth';
+import React from 'react';
+import { Pressable, Text, View } from 'react-native';
 
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { firebaseAuth } from '@/src/firebase/client';
 
 export default function AdminLayout() {
@@ -13,15 +14,17 @@ export default function AdminLayout() {
         options={{
           title: 'Admin',
           headerRight: () => (
-            <Pressable onPress={() => signOut(firebaseAuth)} style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
-              <Text selectable style={{ fontWeight: '700' }}>
-                Sign out
-              </Text>
-            </Pressable>
+            <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', paddingRight: 8 }}>
+              <ThemeToggle />
+              <Pressable onPress={() => signOut(firebaseAuth)} style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
+                <Text selectable style={{ fontWeight: '700' }}>
+                  Sign out
+                </Text>
+              </Pressable>
+            </View>
           ),
         }}
       />
     </Stack>
   );
 }
-

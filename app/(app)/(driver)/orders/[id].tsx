@@ -6,6 +6,7 @@ import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { OrderMap } from '@/components/order-map';
 import { transitionOrder } from '@/src/orders/transition';
 import { firestore } from '@/src/firebase/client';
+import { useAppTheme } from '@/src/theme/theme';
 
 type OrderDoc = {
   id: string;
@@ -19,6 +20,7 @@ type OrderDoc = {
 };
 
 export default function DriverOrderScreen() {
+  const { colors } = useAppTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const orderId = typeof id === 'string' ? id : '';
   const [order, setOrder] = React.useState<OrderDoc | null>(null);
@@ -71,13 +73,17 @@ export default function DriverOrderScreen() {
   }
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: 16, gap: 12 }}>
+    <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
+      style={{ backgroundColor: colors.background }}
+      contentContainerStyle={{ padding: 16, gap: 12 }}
+    >
       <View style={{ gap: 4 }}>
-        <Text selectable style={{ fontSize: 18, fontWeight: '800' }}>
+        <Text selectable style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>
           {orderId}
         </Text>
-        <Text selectable>status: {order?.status ?? '—'}</Text>
-        <Text selectable>
+        <Text selectable style={{ color: colors.text }}>status: {order?.status ?? '—'}</Text>
+        <Text selectable style={{ color: colors.mutedText }}>
           payment: {(order?.paymentMethod ?? 'cash').toUpperCase()} · {(order?.paymentStatus ?? 'unpaid').toUpperCase()}
         </Text>
       </View>
@@ -94,10 +100,10 @@ export default function DriverOrderScreen() {
             paddingHorizontal: 12,
             borderRadius: 12,
             borderCurve: 'continuous',
-            backgroundColor: 'rgba(0,0,0,0.08)',
+            backgroundColor: colors.secondary,
           }}
         >
-          <Text selectable style={{ textAlign: 'center', fontWeight: '800' }}>
+          <Text selectable style={{ textAlign: 'center', fontWeight: '800', color: colors.text }}>
             Open pickup in Maps
           </Text>
         </Pressable>
@@ -111,10 +117,10 @@ export default function DriverOrderScreen() {
             paddingHorizontal: 12,
             borderRadius: 12,
             borderCurve: 'continuous',
-            backgroundColor: 'rgba(0,0,0,0.08)',
+            backgroundColor: colors.secondary,
           }}
         >
-          <Text selectable style={{ textAlign: 'center', fontWeight: '800' }}>
+          <Text selectable style={{ textAlign: 'center', fontWeight: '800', color: colors.text }}>
             Open dropoff in Maps
           </Text>
         </Pressable>
@@ -132,10 +138,10 @@ export default function DriverOrderScreen() {
                 paddingHorizontal: 12,
                 borderRadius: 12,
                 borderCurve: 'continuous',
-                backgroundColor: busy ? 'rgba(0,0,0,0.15)' : 'black',
+                backgroundColor: busy ? colors.disabled : colors.primary,
               }}
             >
-              <Text selectable style={{ color: 'white', textAlign: 'center', fontWeight: '800' }}>
+              <Text selectable style={{ color: colors.primaryText, textAlign: 'center', fontWeight: '800' }}>
                 Accept
               </Text>
             </Pressable>
@@ -148,10 +154,10 @@ export default function DriverOrderScreen() {
                 paddingHorizontal: 12,
                 borderRadius: 12,
                 borderCurve: 'continuous',
-                backgroundColor: 'rgba(0,0,0,0.08)',
+                backgroundColor: colors.secondary,
               }}
             >
-              <Text selectable style={{ textAlign: 'center', fontWeight: '800' }}>
+              <Text selectable style={{ textAlign: 'center', fontWeight: '800', color: colors.text }}>
                 Reject
               </Text>
             </Pressable>
@@ -167,10 +173,10 @@ export default function DriverOrderScreen() {
               paddingHorizontal: 12,
               borderRadius: 12,
               borderCurve: 'continuous',
-              backgroundColor: busy ? 'rgba(0,0,0,0.15)' : 'black',
+              backgroundColor: busy ? colors.disabled : colors.primary,
             }}
           >
-            <Text selectable style={{ color: 'white', textAlign: 'center', fontWeight: '800' }}>
+            <Text selectable style={{ color: colors.primaryText, textAlign: 'center', fontWeight: '800' }}>
               Mark picked up
             </Text>
           </Pressable>
@@ -185,10 +191,10 @@ export default function DriverOrderScreen() {
               paddingHorizontal: 12,
               borderRadius: 12,
               borderCurve: 'continuous',
-              backgroundColor: busy ? 'rgba(0,0,0,0.15)' : 'black',
+              backgroundColor: busy ? colors.disabled : colors.primary,
             }}
           >
-            <Text selectable style={{ color: 'white', textAlign: 'center', fontWeight: '800' }}>
+            <Text selectable style={{ color: colors.primaryText, textAlign: 'center', fontWeight: '800' }}>
               Mark delivered
             </Text>
           </Pressable>
@@ -203,10 +209,10 @@ export default function DriverOrderScreen() {
               paddingHorizontal: 12,
               borderRadius: 12,
               borderCurve: 'continuous',
-              backgroundColor: busy ? 'rgba(0,0,0,0.15)' : 'black',
+              backgroundColor: busy ? colors.disabled : colors.primary,
             }}
           >
-            <Text selectable style={{ color: 'white', textAlign: 'center', fontWeight: '800' }}>
+            <Text selectable style={{ color: colors.primaryText, textAlign: 'center', fontWeight: '800' }}>
               Collect cash
             </Text>
           </Pressable>
