@@ -67,16 +67,13 @@ function getColors(scheme: ThemeScheme): ThemeColors {
 export function AppThemeProvider(props: { children: React.ReactNode }) {
   const system = (useSystemColorScheme() ?? 'light') as ThemeScheme;
   const [preference, setPreferenceState] = React.useState<ThemePreference>('system');
-  const [loaded, setLoaded] = React.useState(false);
 
   React.useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((v) => {
-        if (v === 'light' || v === 'dark' || v === 'system') {
-          setPreferenceState(v);
-        }
-      })
-      .finally(() => setLoaded(true));
+    AsyncStorage.getItem(STORAGE_KEY).then((v) => {
+      if (v === 'light' || v === 'dark' || v === 'system') {
+        setPreferenceState(v);
+      }
+    });
   }, []);
 
   const scheme: ThemeScheme = preference === 'system' ? system : preference;
@@ -84,7 +81,7 @@ export function AppThemeProvider(props: { children: React.ReactNode }) {
 
   const setPreference = React.useCallback((next: ThemePreference) => {
     setPreferenceState(next);
-    AsyncStorage.setItem(STORAGE_KEY, next).catch(() => {});
+    AsyncStorage.setItem(STORAGE_KEY, next).catch(() => { });
   }, []);
 
   const cyclePreference = React.useCallback(() => {
@@ -102,10 +99,6 @@ export function AppThemeProvider(props: { children: React.ReactNode }) {
     [colors, preference, scheme, setPreference, cyclePreference]
   );
 
-  if (!loaded) {
-    return <>{props.children}</>;
-  }
-
   return <ThemeContext.Provider value={value}>{props.children}</ThemeContext.Provider>;
 }
 
@@ -116,4 +109,3 @@ export function useAppTheme() {
   }
   return v;
 }
-
