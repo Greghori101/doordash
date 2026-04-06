@@ -9,10 +9,10 @@ export type OrderAction =
   | 'driver_reject'
   | 'driver_picked'
   | 'driver_delivered'
+  | 'driver_collect_cash'
   | 'user_cancel';
 
 export async function transitionOrder(params: { action: OrderAction; orderId: string; driverId?: string | null }) {
   const fn = httpsCallable(functionsClient, 'transitionOrder');
   await fn({ action: params.action, orderId: params.orderId, driverId: params.driverId ?? null });
 }
-

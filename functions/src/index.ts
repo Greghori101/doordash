@@ -65,6 +65,7 @@ type OrderAction =
   | 'driver_reject'
   | 'driver_picked'
   | 'driver_delivered'
+  | 'driver_collect_cash'
   | 'user_cancel';
 
 async function getUserRoleAndAdminId(uid: string): Promise<{ role: Role | null; adminId: string | null }> {
@@ -191,6 +192,24 @@ export const transitionOrder = functions.https.onCall(async (data, context) => {
       tx.update(db.collection('drivers').doc(uid), { status: 'idle', updatedAt: now });
       tx.update(orderRef, { status: 'delivered', deliveredAt: now, updatedAt: now, updatedBy: uid });
       tx.set(eventRef, { orderId, status: 'delivered', actorId: uid, timestamp: now });
+      return;
+    }
+
+    if (action === 'driver_collect_cash') {
+      if (role !== 'driver') throw new functions.https.HttpsError('permission-denied', 'Driver only.');
+      if (currentDriverId !== uid) throw new functions.https.HttpsError('permission-denied', 'Not assigned to you.');
+      if (status !== 'delivered') throw new functions.https.HttpsError('failed-precondition', 'Order must be delivered.');
+      const paymentMethod = (order?.paymentMethod as string | undefined) ?? 'cash';
+      const paymentStatus = (order?.paymentStatus as string | undefined) ?? 'unpaid';
+      if (paymentMethod !== 'cash') throw new functions.https.HttpsError('failed-precondition', 'Order is not cash.');
+      if (paymentStatus === 'paid') return;
+      tx.update(orderRef, {
+        paymentStatus: 'paid',
+        cashCollectedAt: now,
+        updatedAt: now,
+        updatedBy: uid,
+      });
+      tx.set(eventRef, { orderId, status: 'cash_collected', actorId: uid, timestamp: now });
       return;
     }
 

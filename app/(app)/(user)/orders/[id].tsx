@@ -14,6 +14,8 @@ type OrderDoc = {
   pickupLocation?: { latitude?: number; longitude?: number } | any;
   dropoffLocation?: { latitude?: number; longitude?: number } | any;
   driverId?: string;
+  paymentMethod?: 'cash' | 'prepaid';
+  paymentStatus?: 'unpaid' | 'paid';
 };
 
 type DriverDoc = {
@@ -124,6 +126,9 @@ export default function OrderScreen() {
         </Text>
         <Text selectable>status: {order?.status ?? '—'}</Text>
         <Text selectable>{order?.driverId ? `driver: ${order.driverId}` : 'driver: —'}</Text>
+        <Text selectable>
+          payment: {(order?.paymentMethod ?? 'cash').toUpperCase()} · {(order?.paymentStatus ?? 'unpaid').toUpperCase()}
+        </Text>
       </View>
 
       <View style={{ height: 360, borderRadius: 16, borderCurve: 'continuous', overflow: 'hidden' }}>

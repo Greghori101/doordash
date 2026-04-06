@@ -14,6 +14,8 @@ type OrderDoc = {
   dropoffLocation?: { latitude?: number; longitude?: number } | any;
   driverId?: string;
   driverAcceptedAt?: any;
+  paymentMethod?: 'cash' | 'prepaid';
+  paymentStatus?: 'unpaid' | 'paid';
 };
 
 export default function DriverOrderScreen() {
@@ -75,6 +77,9 @@ export default function DriverOrderScreen() {
           {orderId}
         </Text>
         <Text selectable>status: {order?.status ?? '—'}</Text>
+        <Text selectable>
+          payment: {(order?.paymentMethod ?? 'cash').toUpperCase()} · {(order?.paymentStatus ?? 'unpaid').toUpperCase()}
+        </Text>
       </View>
 
       <View style={{ height: 360, borderRadius: 16, borderCurve: 'continuous', overflow: 'hidden' }}>
@@ -188,8 +193,25 @@ export default function DriverOrderScreen() {
             </Text>
           </Pressable>
         ) : null}
+
+        {order?.status === 'delivered' && (order?.paymentMethod ?? 'cash') === 'cash' && (order?.paymentStatus ?? 'unpaid') !== 'paid' ? (
+          <Pressable
+            disabled={busy}
+            onPress={() => doAction('driver_collect_cash')}
+            style={{
+              paddingVertical: 12,
+              paddingHorizontal: 12,
+              borderRadius: 12,
+              borderCurve: 'continuous',
+              backgroundColor: busy ? 'rgba(0,0,0,0.15)' : 'black',
+            }}
+          >
+            <Text selectable style={{ color: 'white', textAlign: 'center', fontWeight: '800' }}>
+              Collect cash
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
     </ScrollView>
   );
 }
-

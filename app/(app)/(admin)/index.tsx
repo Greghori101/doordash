@@ -2,6 +2,7 @@ import { GeoPoint, addDoc, collection, onSnapshot, orderBy, query, serverTimesta
 import React from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
+import { AdminMap } from '@/components/admin-map';
 import { firestore } from '@/src/firebase/client';
 import { transitionOrder } from '@/src/orders/transition';
 import { useAuthStore } from '@/src/store/auth-store';
@@ -21,6 +22,10 @@ type OrderDoc = {
   driverId?: string;
   status: 'pending' | 'assigned' | 'picked' | 'delivered' | 'cancelled';
   price?: number;
+  paymentMethod?: 'cash' | 'prepaid';
+  paymentStatus?: 'unpaid' | 'paid';
+  pickupLocation?: any;
+  dropoffLocation?: any;
 };
 
 export default function AdminHome() {
@@ -29,12 +34,14 @@ export default function AdminHome() {
   const adminId = profile?.adminId;
   const [drivers, setDrivers] = React.useState<DriverDoc[]>([]);
   const [orders, setOrders] = React.useState<OrderDoc[]>([]);
+  const [selectedOrderId, setSelectedOrderId] = React.useState<string | null>(null);
   const [orderUserId, setOrderUserId] = React.useState('');
   const [pickupLat, setPickupLat] = React.useState('');
   const [pickupLng, setPickupLng] = React.useState('');
   const [dropoffLat, setDropoffLat] = React.useState('');
   const [dropoffLng, setDropoffLng] = React.useState('');
   const [price, setPrice] = React.useState('12');
+  const [paymentMethod, setPaymentMethod] = React.useState<'cash' | 'prepaid'>('cash');
   const [busy, setBusy] = React.useState(false);
 
   React.useEffect(() => {
@@ -110,6 +117,9 @@ export default function AdminHome() {
         dropoffLocation: new GeoPoint(dLat, dLng),
         status: 'pending',
         price: Number.isFinite(p) ? p : 0,
+        paymentMethod,
+        paymentStatus: paymentMethod === 'prepaid' ? 'paid' : 'unpaid',
+        paidAt: paymentMethod === 'prepaid' ? serverTimestamp() : null,
         createdBy: uid,
         createdAt: serverTimestamp(),
         updatedBy: uid,
@@ -126,6 +136,37 @@ export default function AdminHome() {
     }
   }
 
+  const selectedOrder = React.useMemo(() => {
+    if (!selectedOrderId) return null;
+    return orders.find((o) => o.id === selectedOrderId) ?? null;
+  }, [orders, selectedOrderId]);
+
+  const selectedPickup = selectedOrder?.pickupLocation
+    ? {
+        latitude: selectedOrder.pickupLocation.latitude ?? selectedOrder.pickupLocation._lat,
+        longitude: selectedOrder.pickupLocation.longitude ?? selectedOrder.pickupLocation._long,
+      }
+    : null;
+
+  const selectedDropoff = selectedOrder?.dropoffLocation
+    ? {
+        latitude: selectedOrder.dropoffLocation.latitude ?? selectedOrder.dropoffLocation._lat,
+        longitude: selectedOrder.dropoffLocation.longitude ?? selectedOrder.dropoffLocation._long,
+      }
+    : null;
+
+  const driverMarkers = React.useMemo(() => {
+    return drivers
+      .map((d) => {
+        const loc = d.currentLocation;
+        const latitude = loc?.latitude ?? loc?._lat ?? null;
+        const longitude = loc?.longitude ?? loc?._long ?? null;
+        if (typeof latitude !== 'number' || typeof longitude !== 'number') return null;
+        return { id: d.id, location: { latitude, longitude } };
+      })
+      .filter((v): v is { id: string; location: { latitude: number; longitude: number } } => v !== null);
+  }, [drivers]);
+
   return (
     <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ padding: 16, gap: 16 }}>
       <View style={{ gap: 6 }}>
@@ -135,6 +176,10 @@ export default function AdminHome() {
         <Text selectable style={{ fontVariant: ['tabular-nums'] }}>
           adminId: {adminId ?? '—'}
         </Text>
+      </View>
+
+      <View style={{ height: 260, borderRadius: 16, borderCurve: 'continuous', overflow: 'hidden' }}>
+        <AdminMap drivers={driverMarkers} pickup={selectedPickup} dropoff={selectedDropoff} />
       </View>
 
       <View style={{ gap: 10 }}>
@@ -247,6 +292,29 @@ export default function AdminHome() {
           />
         </View>
 
+        <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+          {(['cash', 'prepaid'] as const).map((m) => {
+            const selected = m === paymentMethod;
+            return (
+              <Pressable
+                key={m}
+                onPress={() => setPaymentMethod(m)}
+                style={{
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  borderRadius: 999,
+                  borderCurve: 'continuous',
+                  backgroundColor: selected ? 'black' : 'rgba(0,0,0,0.08)',
+                }}
+              >
+                <Text selectable style={{ color: selected ? 'white' : 'black', fontWeight: '800', textTransform: 'capitalize' }}>
+                  {m}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         <Pressable
           disabled={busy}
           onPress={createOrder}
@@ -307,12 +375,17 @@ export default function AdminHome() {
             }}
           >
             <View style={{ gap: 4 }}>
-              <Text selectable style={{ fontWeight: '800' }}>
-                {o.id}
-              </Text>
+              <Pressable onPress={() => setSelectedOrderId(o.id)}>
+                <Text selectable style={{ fontWeight: '800' }}>
+                  {o.id}
+                </Text>
+              </Pressable>
               <Text selectable>
                 status: {o.status}
                 {o.driverId ? ` · driver: ${o.driverId}` : ''}
+              </Text>
+              <Text selectable>
+                payment: {(o.paymentMethod ?? 'cash').toUpperCase()} · {(o.paymentStatus ?? 'unpaid').toUpperCase()}
               </Text>
             </View>
 

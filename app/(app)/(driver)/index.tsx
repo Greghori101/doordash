@@ -1,9 +1,10 @@
 import * as Location from 'expo-location';
-import { GeoPoint, collection, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { router } from 'expo-router';
+import { GeoPoint, collection, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import React from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
+import { DriverMap } from '@/components/driver-map';
 import { firestore } from '@/src/firebase/client';
 import { startDriverBackgroundLocation, stopDriverBackgroundLocation } from '@/src/location/background';
 import { writeDriverLocationToRTDB } from '@/src/location/rtdb-location';
@@ -92,7 +93,7 @@ export default function DriverHome() {
     await updateDriverDoc({ isOnline: true, status: 'idle', adminId: profile.adminId, userId: uid, id: uid });
     setIsOnline(true);
 
-    startDriverBackgroundLocation({ driverId: uid }).catch(() => {});
+    startDriverBackgroundLocation({ driverId: uid }).catch(() => { });
 
     watchRef.current?.remove();
     watchRef.current = await Location.watchPositionAsync(
@@ -149,6 +150,10 @@ export default function DriverHome() {
           {isOnline ? 'online' : 'offline'}
           {coords ? ` · ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : ''}
         </Text>
+      </View>
+
+      <View style={{ height: 220, borderRadius: 16, borderCurve: 'continuous', overflow: 'hidden' }}>
+        <DriverMap driver={coords ? { latitude: coords.lat, longitude: coords.lng } : null} />
       </View>
 
       <Pressable

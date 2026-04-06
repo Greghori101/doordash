@@ -19,6 +19,7 @@ export default function UserHome() {
   const uid = user?.uid;
 
   const [adminId, setAdminId] = React.useState('');
+  const [paymentMethod, setPaymentMethod] = React.useState<'cash' | 'prepaid'>('cash');
   const [price, setPrice] = React.useState('12');
   const [pickup, setPickup] = React.useState<{ lat: number; lng: number } | null>(null);
   const [dropoffLat, setDropoffLat] = React.useState('');
@@ -73,6 +74,9 @@ export default function UserHome() {
         dropoffLocation: new GeoPoint(dLat, dLng),
         status: 'pending',
         price: Number.isFinite(p) ? p : 0,
+        paymentMethod,
+        paymentStatus: paymentMethod === 'prepaid' ? 'paid' : 'unpaid',
+        paidAt: paymentMethod === 'prepaid' ? serverTimestamp() : null,
         createdBy: uid,
         createdAt: serverTimestamp(),
         updatedBy: uid,
@@ -181,6 +185,29 @@ export default function UserHome() {
               borderCurve: 'continuous',
             }}
           />
+        </View>
+
+        <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+          {(['cash', 'prepaid'] as const).map((m) => {
+            const selected = m === paymentMethod;
+            return (
+              <Pressable
+                key={m}
+                onPress={() => setPaymentMethod(m)}
+                style={{
+                  paddingVertical: 10,
+                  paddingHorizontal: 14,
+                  borderRadius: 999,
+                  borderCurve: 'continuous',
+                  backgroundColor: selected ? 'black' : 'rgba(0,0,0,0.08)',
+                }}
+              >
+                <Text selectable style={{ color: selected ? 'white' : 'black', fontWeight: '800', textTransform: 'capitalize' }}>
+                  {m}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
 
         <Pressable
