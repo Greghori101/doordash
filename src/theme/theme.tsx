@@ -81,7 +81,7 @@ export function AppThemeProvider(props: { children: React.ReactNode }) {
 
   const setPreference = React.useCallback((next: ThemePreference) => {
     setPreferenceState(next);
-    AsyncStorage.setItem(STORAGE_KEY, next).catch(() => { });
+    AsyncStorage.setItem(STORAGE_KEY, next).catch((error) => console.error('Failed to save theme preference:', error));
   }, []);
 
   const cyclePreference = React.useCallback(() => {
