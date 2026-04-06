@@ -202,7 +202,9 @@ export const transitionOrder = functions.https.onCall(async (data, context) => {
       const paymentMethod = (order?.paymentMethod as string | undefined) ?? 'cash';
       const paymentStatus = (order?.paymentStatus as string | undefined) ?? 'unpaid';
       if (paymentMethod !== 'cash') throw new functions.https.HttpsError('failed-precondition', 'Order is not cash.');
-      if (paymentStatus === 'paid') return;
+      if (paymentStatus !== 'unpaid') {
+        throw new functions.https.HttpsError('failed-precondition', 'Payment already collected.');
+      }
       tx.update(orderRef, {
         paymentStatus: 'paid',
         cashCollectedAt: now,
