@@ -1,19 +1,26 @@
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
-import { GeoPoint, addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
+import { GeoPoint, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import React from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { firestore } from '@/src/firebase/client';
+import { transitionOrder } from '@/src/orders/transition';
 import { useAuthStore } from '@/src/store/auth-store';
 import { useAppTheme } from '@/src/theme/theme';
+import { useUserOrders } from '@/src/user/use-user-orders';
 
-type OrderDoc = {
-  id: string;
-  status: string;
-  driverId?: string;
-  adminId: string;
-};
+function statusStyle(status: string) {
+  if (status === 'assigned' || status === 'accepted' || status === 'picked') return { label: 'IN TRANSIT', stripe: '#22C55E' };
+  if (status === 'pending') return { label: 'ASSIGNING', stripe: '#F59E0B' };
+  if (status === 'delivered') return { label: 'DELIVERED', stripe: 'rgba(0,0,0,0.25)' };
+  return { label: status.toUpperCase(), stripe: 'rgba(0,0,0,0.25)' };
+}
+
+function formatPickup(v: { lat: number; lng: number } | null) {
+  if (!v) return '—';
+  return `${v.lat.toFixed(4)}° N, ${v.lng.toFixed(4)}° W`;
+}
 
 export default function UserHome() {
   const { colors } = useAppTheme();
@@ -27,15 +34,7 @@ export default function UserHome() {
   const [dropoffLat, setDropoffLat] = React.useState('');
   const [dropoffLng, setDropoffLng] = React.useState('');
   const [busy, setBusy] = React.useState(false);
-  const [orders, setOrders] = React.useState<OrderDoc[]>([]);
-
-  React.useEffect(() => {
-    if (!uid) return;
-    const q = query(collection(firestore, 'orders'), where('userId', '==', uid), orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (snap) => {
-      setOrders(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as OrderDoc[]);
-    });
-  }, [uid]);
+  const { orders } = useUserOrders({ uid });
 
   async function capturePickup() {
     const fg = await Location.requestForegroundPermissionsAsync();
@@ -93,35 +92,60 @@ export default function UserHome() {
     }
   }
 
+  async function cancelOrder(orderId: string) {
+    setBusy(true);
+    try {
+      await transitionOrder({ action: 'user_cancel', orderId });
+    } catch (e: any) {
+      Alert.alert('Cancel failed', e?.message ?? 'Unknown error');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const activeCount = orders.filter((o) => o.status === 'assigned' || o.status === 'accepted' || o.status === 'picked').length;
+  const activeForFeed = orders.find((o) => o.status === 'assigned' || o.status === 'accepted' || o.status === 'picked') ?? null;
+
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
       style={{ backgroundColor: colors.background }}
-      contentContainerStyle={{ padding: 16, gap: 16 }}
+      contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 20 }}
     >
-      <View style={{ gap: 8 }}>
-        <Text selectable style={{ fontSize: 20, fontWeight: '800', color: colors.text }}>
-          Create Order
+      <View
+        style={{
+          borderRadius: 18,
+          borderCurve: 'continuous',
+          backgroundColor: colors.card,
+          padding: 16,
+          gap: 12,
+        }}
+      >
+        <Text selectable style={{ color: colors.text, fontWeight: '900', letterSpacing: 0.5 }}>
+          I CREATE ORDER
         </Text>
 
         <View style={{ gap: 6 }}>
-          <Text selectable style={{ color: colors.text }}>
-            Tenant adminId
+          <Text selectable style={{ color: colors.mutedText, fontWeight: '900', letterSpacing: 1, fontSize: 12 }}>
+            TENANT ADMIN ID
           </Text>
           <TextInput
             value={adminId}
             onChangeText={setAdminId}
             autoCapitalize="none"
             autoCorrect={false}
-            placeholder="adminId"
+            placeholder="T-882-991"
             placeholderTextColor={colors.mutedText}
             style={{
+              backgroundColor: colors.background,
               borderWidth: 1,
               borderColor: colors.border,
-              padding: 12,
-              borderRadius: 12,
+              padding: 14,
+              borderRadius: 14,
               borderCurve: 'continuous',
               color: colors.text,
+              fontWeight: '800',
+              letterSpacing: 1,
             }}
           />
         </View>
@@ -130,86 +154,100 @@ export default function UserHome() {
           onPress={capturePickup}
           style={{
             paddingVertical: 12,
-            paddingHorizontal: 12,
-            borderRadius: 12,
+            borderRadius: 14,
             borderCurve: 'continuous',
-            backgroundColor: colors.secondary,
+            backgroundColor: colors.background,
+            borderWidth: 1,
+            borderColor: colors.border,
           }}
         >
-          <Text selectable style={{ textAlign: 'center', fontWeight: '800', color: colors.text }}>
-            Use current pickup
+          <Text selectable style={{ textAlign: 'center', fontWeight: '900', letterSpacing: 1, color: colors.text }}>
+            PICKUP COORDINATES
           </Text>
         </Pressable>
 
-        <Text selectable style={{ fontVariant: ['tabular-nums'], color: colors.mutedText }}>
-          pickup: {pickup ? `${pickup.lat.toFixed(5)}, ${pickup.lng.toFixed(5)}` : '—'}
+        <Text selectable style={{ color: colors.mutedText, fontWeight: '800', fontVariant: ['tabular-nums'] }}>
+          ○ {formatPickup(pickup)}
         </Text>
 
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <View style={{ flex: 1, gap: 6 }}>
-            <Text selectable style={{ color: colors.text }}>
-              Dropoff lat
+            <Text selectable style={{ color: colors.mutedText, fontWeight: '900', letterSpacing: 1, fontSize: 12 }}>
+              DROPOFF LAT
             </Text>
             <TextInput
               value={dropoffLat}
               onChangeText={setDropoffLat}
-              placeholder="36.7"
+              placeholder="00.0000"
               placeholderTextColor={colors.mutedText}
               keyboardType="decimal-pad"
               style={{
+                backgroundColor: colors.background,
                 borderWidth: 1,
                 borderColor: colors.border,
-                padding: 12,
-                borderRadius: 12,
+                padding: 14,
+                borderRadius: 14,
                 borderCurve: 'continuous',
                 color: colors.text,
+                fontWeight: '800',
+                fontVariant: ['tabular-nums'],
               }}
             />
           </View>
           <View style={{ flex: 1, gap: 6 }}>
-            <Text selectable style={{ color: colors.text }}>
-              Dropoff lng
+            <Text selectable style={{ color: colors.mutedText, fontWeight: '900', letterSpacing: 1, fontSize: 12 }}>
+              DROPOFF LONG
             </Text>
             <TextInput
               value={dropoffLng}
               onChangeText={setDropoffLng}
-              placeholder="3.0"
+              placeholder="00.0000"
               placeholderTextColor={colors.mutedText}
               keyboardType="decimal-pad"
               style={{
+                backgroundColor: colors.background,
                 borderWidth: 1,
                 borderColor: colors.border,
-                padding: 12,
-                borderRadius: 12,
+                padding: 14,
+                borderRadius: 14,
                 borderCurve: 'continuous',
                 color: colors.text,
+                fontWeight: '800',
+                fontVariant: ['tabular-nums'],
               }}
             />
           </View>
         </View>
 
         <View style={{ gap: 6 }}>
-          <Text selectable style={{ color: colors.text }}>
-            Price
+          <Text selectable style={{ color: colors.mutedText, fontWeight: '900', letterSpacing: 1, fontSize: 12 }}>
+            PRICE (USD)
           </Text>
           <TextInput
             value={price}
             onChangeText={setPrice}
-            placeholder="12"
+            placeholder="$ 0.00"
             placeholderTextColor={colors.mutedText}
             keyboardType="decimal-pad"
             style={{
+              backgroundColor: colors.background,
               borderWidth: 1,
               borderColor: colors.border,
-              padding: 12,
-              borderRadius: 12,
+              padding: 14,
+              borderRadius: 14,
               borderCurve: 'continuous',
               color: colors.text,
+              fontWeight: '800',
+              fontVariant: ['tabular-nums'],
             }}
           />
         </View>
 
-        <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+        <Text selectable style={{ color: colors.mutedText, fontWeight: '900', letterSpacing: 1, fontSize: 12 }}>
+          PAYMENT METHOD
+        </Text>
+
+        <View style={{ flexDirection: 'row', gap: 10 }}>
           {(['cash', 'prepaid'] as const).map((m) => {
             const selected = m === paymentMethod;
             return (
@@ -217,18 +255,17 @@ export default function UserHome() {
                 key={m}
                 onPress={() => setPaymentMethod(m)}
                 style={{
-                  paddingVertical: 10,
-                  paddingHorizontal: 14,
-                  borderRadius: 999,
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 14,
                   borderCurve: 'continuous',
-                  backgroundColor: selected ? colors.primary : colors.secondary,
+                  backgroundColor: selected ? colors.primary : colors.background,
+                  borderWidth: 1,
+                  borderColor: colors.border,
                 }}
               >
-                <Text
-                  selectable
-                  style={{ color: selected ? colors.primaryText : colors.text, fontWeight: '800', textTransform: 'capitalize' }}
-                >
-                  {m}
+                <Text selectable style={{ textAlign: 'center', fontWeight: '900', color: selected ? colors.primaryText : colors.text }}>
+                  {m.toUpperCase()}
                 </Text>
               </Pressable>
             );
@@ -240,44 +277,193 @@ export default function UserHome() {
           onPress={createOrder}
           style={{
             paddingVertical: 14,
-            paddingHorizontal: 12,
-            borderRadius: 14,
+            borderRadius: 16,
             borderCurve: 'continuous',
             backgroundColor: busy ? colors.disabled : colors.primary,
           }}
         >
-          <Text selectable style={{ color: colors.primaryText, textAlign: 'center', fontWeight: '800' }}>
-            Create order
+          <Text selectable style={{ color: colors.primaryText, textAlign: 'center', fontWeight: '900', letterSpacing: 1 }}>
+            CREATE ORDER
           </Text>
         </Pressable>
       </View>
 
-      <View style={{ gap: 10 }}>
-        <Text selectable style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>
-          My Orders
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <Text selectable style={{ color: colors.text, fontWeight: '900', letterSpacing: 0.5 }}>
+          I MY ORDERS
         </Text>
-        {orders.length === 0 ? <Text selectable style={{ color: colors.mutedText }}>No orders yet.</Text> : null}
-        {orders.map((o) => (
-          <Pressable
-            key={o.id}
-            onPress={() => router.push(`/(app)/(user)/orders/${o.id}`)}
+        <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.secondary }}>
+          <Text selectable style={{ color: colors.text, fontWeight: '900', letterSpacing: 0.5, fontSize: 12 }}>
+            LIVE TRACKING: {activeCount} ACTIVE
+          </Text>
+        </View>
+      </View>
+
+      {orders.length === 0 ? <Text selectable style={{ color: colors.mutedText }}>No orders yet.</Text> : null}
+
+      <View style={{ gap: 12 }}>
+        {orders.slice(0, 8).map((o) => {
+          const s = statusStyle(o.status);
+          const showViewMap = o.status === 'assigned' || o.status === 'accepted' || o.status === 'picked';
+          const showCancel = o.status === 'pending';
+          const showReceipt = o.status === 'delivered';
+          return (
+            <View
+              key={o.id}
+              style={{
+                borderRadius: 18,
+                borderCurve: 'continuous',
+                backgroundColor: colors.card,
+                overflow: 'hidden',
+              }}
+            >
+              <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: s.stripe }} />
+              <View style={{ padding: 14, gap: 10 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ gap: 2 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.secondary }}>
+                        <Text selectable style={{ fontWeight: '900', color: colors.text, fontSize: 12 }}>
+                          {s.label}
+                        </Text>
+                      </View>
+                      <Text selectable style={{ color: colors.mutedText, fontWeight: '900', fontSize: 12 }}>
+                        {o.id.toUpperCase()}
+                      </Text>
+                    </View>
+                    <Text selectable style={{ color: colors.text, fontWeight: '900' }}>
+                      {o.status === 'delivered' ? 'MAIN STREET CAFE TERMINAL' : o.status === 'pending' ? 'GREENWICH LOGISTICS HUB' : 'DOWNTOWN MEDICAL SUPPLIES'}
+                    </Text>
+                    <Text selectable style={{ color: colors.mutedText, fontWeight: '800', fontSize: 12 }}>
+                      DRIVER ID: {o.driverId ? o.driverId : 'SEARCHING...'}
+                    </Text>
+                  </View>
+                </View>
+
+                {showViewMap ? (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text selectable style={{ color: colors.mutedText, fontWeight: '900', fontVariant: ['tabular-nums'] }}>
+                      ETA: 14:20
+                    </Text>
+                    <Pressable
+                      onPress={() => router.push(`/(app)/(user)/orders/${o.id}`)}
+                      style={{
+                        paddingVertical: 10,
+                        paddingHorizontal: 14,
+                        borderRadius: 999,
+                        borderCurve: 'continuous',
+                        backgroundColor: colors.background,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                      }}
+                    >
+                      <Text selectable style={{ color: colors.text, fontWeight: '900' }}>
+                        VIEW MAP
+                      </Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+
+                {showReceipt ? (
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text selectable style={{ color: colors.mutedText, fontWeight: '900' }}>
+                      DATE: OCT 12
+                    </Text>
+                    <Pressable
+                      style={{
+                        paddingVertical: 10,
+                        paddingHorizontal: 14,
+                        borderRadius: 999,
+                        borderCurve: 'continuous',
+                        backgroundColor: colors.background,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        opacity: 0.7,
+                      }}
+                    >
+                      <Text selectable style={{ color: colors.text, fontWeight: '900' }}>
+                        RECEIPT
+                      </Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+
+                {showCancel ? (
+                  <Pressable
+                    disabled={busy}
+                    onPress={() => cancelOrder(o.id)}
+                    style={{
+                      paddingVertical: 12,
+                      borderRadius: 14,
+                      borderCurve: 'continuous',
+                      backgroundColor: colors.background,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                    }}
+                  >
+                    <Text selectable style={{ textAlign: 'center', fontWeight: '900', color: colors.text }}>
+                      CANCEL
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
+          );
+        })}
+      </View>
+
+      <View
+        style={{
+          borderRadius: 18,
+          borderCurve: 'continuous',
+          overflow: 'hidden',
+          backgroundColor: colors.card,
+          height: 160,
+        }}
+      >
+        <Pressable
+          onPress={() => {
+            if (activeForFeed) router.push(`/(app)/(user)/orders/${activeForFeed.id}`);
+          }}
+          style={{ flex: 1 }}
+        >
+          <View style={{ flex: 1, backgroundColor: colors.card }} />
+          <View
             style={{
-              padding: 12,
-              borderRadius: 14,
+              position: 'absolute',
+              left: 12,
+              top: 12,
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderRadius: 999,
               borderCurve: 'continuous',
-              backgroundColor: colors.card,
-              gap: 6,
+              backgroundColor: colors.primary,
             }}
           >
-            <Text selectable style={{ fontWeight: '800', color: colors.text }}>
-              {o.id}
+            <Text selectable style={{ color: colors.primaryText, fontWeight: '900', letterSpacing: 1, fontSize: 11 }}>
+              LIVE FEED_01
             </Text>
-            <Text selectable style={{ color: colors.text }}>
-              {o.status}
-              {o.driverId ? ` · driver: ${o.driverId}` : ''}
+          </View>
+          <View
+            style={{
+              position: 'absolute',
+              left: 12,
+              right: 12,
+              bottom: 12,
+              borderRadius: 16,
+              borderCurve: 'continuous',
+              backgroundColor: colors.background,
+              padding: 12,
+            }}
+          >
+            <Text selectable style={{ color: colors.mutedText, fontWeight: '900', letterSpacing: 1, fontSize: 11 }}>
+              CURRENT ACTIVE ROUTE
             </Text>
-          </Pressable>
-        ))}
+            <Text selectable style={{ color: colors.text, fontWeight: '900' }}>
+              {activeForFeed ? 'PIER 45 → 10TH AVENUE WAREHOUSE' : '—'}
+            </Text>
+          </View>
+        </Pressable>
       </View>
     </ScrollView>
   );

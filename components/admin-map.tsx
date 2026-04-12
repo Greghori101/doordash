@@ -2,6 +2,8 @@ import React from 'react';
 import { Platform, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 
+import { doordropMapStyle } from '@/src/maps/map-style';
+
 export type LatLng = { latitude: number; longitude: number };
 
 type DriverMarker = { id: string; location: LatLng };
@@ -47,7 +49,13 @@ export function AdminMap(props: {
 
     return (
         <View style={{ flex: 1 }}>
-            <MapView provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined} style={{ flex: 1 }} initialRegion={region} region={region}>
+            <MapView
+                provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+                style={{ flex: 1 }}
+                customMapStyle={doordropMapStyle as any}
+                initialRegion={region}
+                region={region}
+            >
                 {props.drivers.map((d) => (
                     <Marker key={d.id} coordinate={d.location} title="Driver" description={d.id} />
                 ))}

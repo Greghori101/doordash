@@ -2,6 +2,8 @@ import React from 'react';
 import { Platform, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 
+import { doordropMapStyle } from '@/src/maps/map-style';
+
 export type LatLng = { latitude: number; longitude: number };
 
 export function DriverMap(props: { driver: LatLng | null }) {
@@ -11,7 +13,13 @@ export function DriverMap(props: { driver: LatLng | null }) {
 
   return (
     <View style={{ flex: 1 }}>
-      <MapView provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined} style={{ flex: 1 }} initialRegion={region} region={region}>
+      <MapView
+        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+        style={{ flex: 1 }}
+        customMapStyle={doordropMapStyle as any}
+        initialRegion={region}
+        region={region}
+      >
         {props.driver ? <Marker coordinate={props.driver} title="You" /> : null}
       </MapView>
     </View>

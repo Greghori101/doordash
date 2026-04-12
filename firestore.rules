@@ -21,6 +21,10 @@ service cloud.firestore {
       return role() == 'admin';
     }
 
+    function isSuperAdmin() {
+      return role() == 'super_admin';
+    }
+
     function isDriver() {
       return role() == 'driver';
     }
@@ -30,9 +34,9 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow read: if isSignedIn() && (request.auth.uid == uid || isSuperAdmin());
       allow create: if isSignedIn() && request.auth.uid == uid;
-      allow update: if isSignedIn() && request.auth.uid == uid;
+      allow update: if isSignedIn() && (request.auth.uid == uid || isSuperAdmin());
       allow delete: if false;
     }
 
@@ -56,6 +60,7 @@ service cloud.firestore {
           resource.data.userId == request.auth.uid
           || resource.data.driverId == request.auth.uid
           || (isAdmin() && resource.data.adminId == adminId())
+          || isSuperAdmin()
         );
 
       allow create: if isSignedIn()
@@ -71,6 +76,20 @@ service cloud.firestore {
 
     match /order_events/{eventId} {
       allow read: if isSignedIn();
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /email_otps/{id} {
+      allow read: if false;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /super_audit_logs/{id} {
+      allow read: if isSignedIn() && isSuperAdmin();
       allow create: if false;
       allow update: if false;
       allow delete: if false;

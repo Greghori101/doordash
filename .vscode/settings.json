@@ -1,14 +1,9 @@
 {
-  "editor.codeActionsOnSave": {
-    "source.fixAll": "explicit",
-    "source.organizeImports": "explicit",
-    "source.sortMembers": "explicit"
-  },
-  "workbench.colorCustomizations": {
-    "activityBar.background": "#001308",
-    "titleBar.activeBackground": "#001308",
-    "titleBar.activeForeground": "#ECFEF4",
-    "titleBar.inactiveBackground": "#001308",
-    "titleBar.inactiveForeground": "#ECFEF4"
-  }
+    "workbench.colorCustomizations": {
+        "activityBar.background": "#033519",
+        "titleBar.activeBackground": "#044B23",
+        "titleBar.activeForeground": "#ECFEF4",
+        "titleBar.inactiveBackground": "#033519",
+        "titleBar.inactiveForeground": "#ECFEF4"
+    }
 }

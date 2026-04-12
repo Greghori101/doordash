@@ -1,6 +1,6 @@
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { firebaseAuth, firestore } from '@/src/firebase/client';
 import type { AppRole, UserProfile } from '@/src/auth/types';
+import { firebaseAuth, firestore } from '@/src/firebase/client';
+import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 
 export async function setCurrentUserRole(params: { role: AppRole; adminId?: string }) {
   const user = firebaseAuth.currentUser;
@@ -14,6 +14,7 @@ export async function setCurrentUserRole(params: { role: AppRole; adminId?: stri
     email: user.email ?? undefined,
     role: params.role,
     adminId: params.adminId,
+    status: params.role === 'admin' ? 'suspended' : 'active',
   };
 
   if (params.role === 'admin') {
@@ -43,4 +44,3 @@ export async function setCurrentUserRole(params: { role: AppRole; adminId?: stri
 
   await setDoc(doc(firestore, 'users', user.uid), { ...baseProfile, createdAt: serverTimestamp() }, { merge: true });
 }
-

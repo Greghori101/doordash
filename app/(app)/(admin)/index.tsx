@@ -1,72 +1,28 @@
-import { GeoPoint, addDoc, collection, onSnapshot, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { router } from 'expo-router';
 import React from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
-import { AdminMap } from '@/components/admin-map';
-import { firestore } from '@/src/firebase/client';
+import { useAdminData } from '@/src/admin/use-admin-data';
 import { transitionOrder } from '@/src/orders/transition';
 import { useAuthStore } from '@/src/store/auth-store';
 import { useAppTheme } from '@/src/theme/theme';
 
-type DriverDoc = {
-  id: string;
-  adminId: string;
-  isOnline: boolean;
-  status: 'idle' | 'busy';
-  currentLocation?: { latitude: number; longitude: number } | any;
-};
+type OrderFilter = 'pending' | 'active' | 'history';
 
-type OrderDoc = {
-  id: string;
-  adminId: string;
-  userId: string;
-  driverId?: string;
-  status: 'pending' | 'assigned' | 'picked' | 'delivered' | 'cancelled';
-  price?: number;
-  paymentMethod?: 'cash' | 'prepaid';
-  paymentStatus?: 'unpaid' | 'paid';
-  pickupLocation?: any;
-  dropoffLocation?: any;
-};
-
-export default function AdminHome() {
+export default function AdminDashboard() {
   const { colors } = useAppTheme();
-  const user = useAuthStore((s) => s.user);
   const profile = useAuthStore((s) => s.profile);
-  const adminId = profile?.adminId;
-  const [drivers, setDrivers] = React.useState<DriverDoc[]>([]);
-  const [orders, setOrders] = React.useState<OrderDoc[]>([]);
-  const [selectedOrderId, setSelectedOrderId] = React.useState<string | null>(null);
-  const [orderUserId, setOrderUserId] = React.useState('');
-  const [pickupLat, setPickupLat] = React.useState('');
-  const [pickupLng, setPickupLng] = React.useState('');
-  const [dropoffLat, setDropoffLat] = React.useState('');
-  const [dropoffLng, setDropoffLng] = React.useState('');
-  const [price, setPrice] = React.useState('12');
-  const [paymentMethod, setPaymentMethod] = React.useState<'cash' | 'prepaid'>('cash');
-  const [busy, setBusy] = React.useState(false);
+  const adminId = profile?.adminId ?? null;
+  const { drivers, orders } = useAdminData({ adminId });
+  const [filter, setFilter] = React.useState<OrderFilter>('pending');
 
-  React.useEffect(() => {
-    if (!adminId) return;
-    const q = query(collection(firestore, 'drivers'), where('adminId', '==', adminId));
-    return onSnapshot(q, (snap) => {
-      const next = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as DriverDoc[];
-      setDrivers(next);
-    });
-  }, [adminId]);
-
-  React.useEffect(() => {
-    if (!adminId) return;
-    const q = query(collection(firestore, 'orders'), where('adminId', '==', adminId), orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (snap) => {
-      const next = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })) as OrderDoc[];
-      setOrders(next);
-    });
-  }, [adminId]);
+  const pendingOrders = React.useMemo(() => orders.filter((o) => o.status === 'pending'), [orders]);
+  const activeOrders = React.useMemo(() => orders.filter((o) => o.status === 'assigned' || o.status === 'accepted' || o.status === 'picked'), [orders]);
+  const historyOrders = React.useMemo(() => orders.filter((o) => o.status === 'delivered' || o.status === 'cancelled'), [orders]);
+  const shownOrders = filter === 'pending' ? pendingOrders : filter === 'active' ? activeOrders : historyOrders;
 
   async function assignFirstIdle(orderId: string) {
-    if (!adminId) return;
-    const uid = user?.uid;
     const candidate = drivers.find((d) => d.isOnline && d.status === 'idle');
     if (!candidate) {
       Alert.alert('No idle drivers', 'Ask a driver to go online.');
@@ -79,384 +35,218 @@ export default function AdminHome() {
     }
   }
 
-  async function reassignFirstIdle(order: OrderDoc) {
-    if (!adminId) return;
-    const uid = user?.uid;
-    const candidate = drivers.find((d) => d.isOnline && d.status === 'idle' && d.id !== order.driverId);
-    if (!candidate) {
-      Alert.alert('No idle drivers', 'Ask a driver to go online.');
-      return;
-    }
-    try {
-      await transitionOrder({ action: 'admin_reassign', orderId: order.id, driverId: candidate.id });
-    } catch (e: any) {
-      Alert.alert('Reassign failed', e?.message ?? 'Unknown error');
-    }
-  }
-
-  async function createOrder() {
-    const uid = user?.uid;
-    if (!adminId || !uid) return;
-
-    const tUserId = orderUserId.trim() || uid;
-    const pLat = Number(pickupLat);
-    const pLng = Number(pickupLng);
-    const dLat = Number(dropoffLat);
-    const dLng = Number(dropoffLng);
-    const p = Number(price);
-
-    if (!Number.isFinite(pLat) || !Number.isFinite(pLng) || !Number.isFinite(dLat) || !Number.isFinite(dLng)) {
-      Alert.alert('Missing coordinates', 'Enter pickup and dropoff coordinates.');
-      return;
-    }
-
-    setBusy(true);
-    try {
-      await addDoc(collection(firestore, 'orders'), {
-        userId: tUserId,
-        adminId,
-        pickupLocation: new GeoPoint(pLat, pLng),
-        dropoffLocation: new GeoPoint(dLat, dLng),
-        status: 'pending',
-        price: Number.isFinite(p) ? p : 0,
-        paymentMethod,
-        paymentStatus: paymentMethod === 'prepaid' ? 'paid' : 'unpaid',
-        paidAt: paymentMethod === 'prepaid' ? serverTimestamp() : null,
-        createdBy: uid,
-        createdAt: serverTimestamp(),
-        updatedBy: uid,
-        updatedAt: serverTimestamp(),
-      });
-      setPickupLat('');
-      setPickupLng('');
-      setDropoffLat('');
-      setDropoffLng('');
-    } catch (e: any) {
-      Alert.alert('Create order failed', e?.message ?? 'Unknown error');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const selectedOrder = React.useMemo(() => {
-    if (!selectedOrderId) return null;
-    return orders.find((o) => o.id === selectedOrderId) ?? null;
-  }, [orders, selectedOrderId]);
-
-  const selectedPickup = selectedOrder?.pickupLocation
-    ? {
-      latitude: selectedOrder.pickupLocation.latitude ?? selectedOrder.pickupLocation._lat,
-      longitude: selectedOrder.pickupLocation.longitude ?? selectedOrder.pickupLocation._long,
-    }
-    : null;
-
-  const selectedDropoff = selectedOrder?.dropoffLocation
-    ? {
-      latitude: selectedOrder.dropoffLocation.latitude ?? selectedOrder.dropoffLocation._lat,
-      longitude: selectedOrder.dropoffLocation.longitude ?? selectedOrder.dropoffLocation._long,
-    }
-    : null;
-
-  const driverMarkers = React.useMemo(() => {
-    return drivers
-      .map((d) => {
-        const loc = d.currentLocation;
-        const latitude = loc?.latitude ?? loc?._lat ?? null;
-        const longitude = loc?.longitude ?? loc?._long ?? null;
-        if (typeof latitude !== 'number' || typeof longitude !== 'number') return null;
-        return { id: d.id, location: { latitude, longitude } };
-      })
-      .filter((v): v is { id: string; location: { latitude: number; longitude: number } } => v !== null);
-  }, [drivers]);
-
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
       style={{ backgroundColor: colors.background }}
-      contentContainerStyle={{ padding: 16, gap: 16 }}
+      contentContainerStyle={{ padding: 16, gap: 14 }}
     >
-      <View style={{ gap: 6 }}>
-        <Text selectable style={{ fontSize: 20, fontWeight: '800', color: colors.text }}>
-          Tenant
-        </Text>
-        <Text selectable style={{ fontVariant: ['tabular-nums'], color: colors.mutedText }}>
-          adminId: {adminId ?? '—'}
-        </Text>
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        <View style={{ flex: 1, padding: 14, borderRadius: 18, borderCurve: 'continuous', backgroundColor: colors.card, gap: 6 }}>
+          <Text selectable style={{ color: colors.mutedText, fontWeight: '900', letterSpacing: 1, fontSize: 11 }}>
+            TOTAL DRIVERS
+          </Text>
+          <Text selectable style={{ color: colors.text, fontWeight: '900', fontSize: 34, fontVariant: ['tabular-nums'] }}>
+            {drivers.length}
+          </Text>
+        </View>
+        <View style={{ flex: 1, padding: 14, borderRadius: 18, borderCurve: 'continuous', backgroundColor: colors.card, gap: 6 }}>
+          <Text selectable style={{ color: colors.mutedText, fontWeight: '900', letterSpacing: 1, fontSize: 11 }}>
+            ACTIVE ORDERS
+          </Text>
+          <Text selectable style={{ color: colors.text, fontWeight: '900', fontSize: 34, fontVariant: ['tabular-nums'] }}>
+            {activeOrders.length}
+          </Text>
+          <Text selectable style={{ color: colors.mutedText, fontWeight: '800' }}>
+            Live
+          </Text>
+        </View>
       </View>
 
-      <View style={{ height: 260, borderRadius: 16, borderCurve: 'continuous', overflow: 'hidden' }}>
-        <AdminMap drivers={driverMarkers} pickup={selectedPickup} dropoff={selectedDropoff} />
+      <View style={{ padding: 14, borderRadius: 18, borderCurve: 'continuous', backgroundColor: colors.card, gap: 6 }}>
+        <Text selectable style={{ color: colors.mutedText, fontWeight: '900', letterSpacing: 1, fontSize: 11 }}>
+          SYSTEM HEALTH
+        </Text>
+        <Text selectable style={{ color: colors.text, fontWeight: '900', fontSize: 34, fontVariant: ['tabular-nums'] }}>
+          99.8
+        </Text>
+        <Text selectable style={{ color: colors.mutedText, fontWeight: '800' }}>
+          All systems operational
+        </Text>
       </View>
 
       <View style={{ gap: 10 }}>
-        <Text selectable style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>
-          Create Order
-        </Text>
-
-        <View style={{ gap: 6 }}>
-          <Text selectable style={{ color: colors.text }}>
-            User ID (optional)
-          </Text>
-          <TextInput
-            value={orderUserId}
-            onChangeText={setOrderUserId}
-            autoCapitalize="none"
-            autoCorrect={false}
-            placeholder="defaults to your uid"
-            placeholderTextColor={colors.mutedText}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <View style={{ gap: 2 }}>
+            <Text selectable style={{ color: colors.text, fontWeight: '900', fontSize: 18 }}>
+              Fleet{'\n'}Management
+            </Text>
+            <Text selectable style={{ color: colors.mutedText, fontWeight: '700' }}>
+              Real-time driver tracking and dispatch
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => router.push('/(app)/(admin)/drivers')}
             style={{
-              borderWidth: 1,
-              borderColor: colors.border,
-              padding: 12,
-              borderRadius: 12,
+              paddingVertical: 10,
+              paddingHorizontal: 12,
+              borderRadius: 999,
               borderCurve: 'continuous',
-              color: colors.text,
+              backgroundColor: colors.secondary,
             }}
-          />
+          >
+            <Text selectable style={{ color: colors.text, fontWeight: '900' }}>
+              Add Driver
+            </Text>
+          </Pressable>
         </View>
 
+        <View style={{ gap: 10 }}>
+          {drivers.slice(0, 3).map((d) => {
+            const online = d.isOnline;
+            const chipBg = online ? '#D7F5DF' : '#F0F0F0';
+            const chipFg = online ? '#0B5A2A' : 'rgba(0,0,0,0.6)';
+            return (
+              <View
+                key={d.id}
+                style={{
+                  padding: 14,
+                  borderRadius: 18,
+                  borderCurve: 'continuous',
+                  backgroundColor: colors.card,
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <View style={{ gap: 2 }}>
+                  <Text selectable style={{ color: colors.text, fontWeight: '900' }}>
+                    {d.id}
+                  </Text>
+                  <Text selectable style={{ color: colors.mutedText, fontWeight: '800', fontSize: 12 }}>
+                    {online ? 'Online' : 'Offline'} · {d.status}
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: chipBg }}>
+                    <Text selectable style={{ color: chipFg, fontWeight: '900', fontSize: 12 }}>
+                      {online ? 'ONLINE' : 'OFFLINE'}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => router.push({ pathname: '/(app)/(admin)/drivers/[id]', params: { id: d.id } })}
+                    style={{
+                      paddingVertical: 10,
+                      paddingHorizontal: 12,
+                      borderRadius: 999,
+                      borderCurve: 'continuous',
+                      backgroundColor: colors.background,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                    }}
+                  >
+                    <Text selectable style={{ color: colors.text, fontWeight: '900' }}>
+                      Manage
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      </View>
+
+      <View style={{ gap: 10 }}>
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          <View style={{ flex: 1, gap: 6 }}>
-            <Text selectable style={{ color: colors.text }}>
-              Pickup lat
-            </Text>
-            <TextInput
-              value={pickupLat}
-              onChangeText={setPickupLat}
-              placeholder="36.7"
-              placeholderTextColor={colors.mutedText}
-              keyboardType="decimal-pad"
-              style={{
-                borderWidth: 1,
-                borderColor: colors.border,
-                padding: 12,
-                borderRadius: 12,
-                borderCurve: 'continuous',
-                color: colors.text,
-              }}
-            />
-          </View>
-          <View style={{ flex: 1, gap: 6 }}>
-            <Text selectable style={{ color: colors.text }}>
-              Pickup lng
-            </Text>
-            <TextInput
-              value={pickupLng}
-              onChangeText={setPickupLng}
-              placeholder="3.0"
-              placeholderTextColor={colors.mutedText}
-              keyboardType="decimal-pad"
-              style={{
-                borderWidth: 1,
-                borderColor: colors.border,
-                padding: 12,
-                borderRadius: 12,
-                borderCurve: 'continuous',
-                color: colors.text,
-              }}
-            />
-          </View>
-        </View>
-
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <View style={{ flex: 1, gap: 6 }}>
-            <Text selectable style={{ color: colors.text }}>
-              Dropoff lat
-            </Text>
-            <TextInput
-              value={dropoffLat}
-              onChangeText={setDropoffLat}
-              placeholder="36.7"
-              placeholderTextColor={colors.mutedText}
-              keyboardType="decimal-pad"
-              style={{
-                borderWidth: 1,
-                borderColor: colors.border,
-                padding: 12,
-                borderRadius: 12,
-                borderCurve: 'continuous',
-                color: colors.text,
-              }}
-            />
-          </View>
-          <View style={{ flex: 1, gap: 6 }}>
-            <Text selectable style={{ color: colors.text }}>
-              Dropoff lng
-            </Text>
-            <TextInput
-              value={dropoffLng}
-              onChangeText={setDropoffLng}
-              placeholder="3.0"
-              placeholderTextColor={colors.mutedText}
-              keyboardType="decimal-pad"
-              style={{
-                borderWidth: 1,
-                borderColor: colors.border,
-                padding: 12,
-                borderRadius: 12,
-                borderCurve: 'continuous',
-                color: colors.text,
-              }}
-            />
-          </View>
-        </View>
-
-        <View style={{ gap: 6 }}>
-          <Text selectable style={{ color: colors.text }}>
-            Price
-          </Text>
-          <TextInput
-            value={price}
-            onChangeText={setPrice}
-            placeholder="12"
-            placeholderTextColor={colors.mutedText}
-            keyboardType="decimal-pad"
-            style={{
-              borderWidth: 1,
-              borderColor: colors.border,
-              padding: 12,
-              borderRadius: 12,
-              borderCurve: 'continuous',
-              color: colors.text,
-            }}
-          />
-        </View>
-
-        <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
-          {(['cash', 'prepaid'] as const).map((m) => {
-            const selected = m === paymentMethod;
+          {(['pending', 'active', 'history'] as const).map((k) => {
+            const selected = k === filter;
             return (
               <Pressable
-                key={m}
-                onPress={() => setPaymentMethod(m)}
+                key={k}
+                onPress={() => setFilter(k)}
                 style={{
+                  flex: 1,
                   paddingVertical: 10,
-                  paddingHorizontal: 14,
                   borderRadius: 999,
                   borderCurve: 'continuous',
                   backgroundColor: selected ? colors.primary : colors.secondary,
                 }}
               >
-                <Text
-                  selectable
-                  style={{ color: selected ? colors.primaryText : colors.text, fontWeight: '800', textTransform: 'capitalize' }}
-                >
-                  {m}
+                <Text selectable style={{ textAlign: 'center', fontWeight: '900', color: selected ? colors.primaryText : colors.text }}>
+                  {k[0].toUpperCase() + k.slice(1)}
                 </Text>
               </Pressable>
             );
           })}
         </View>
 
-        <Pressable
-          disabled={busy}
-          onPress={createOrder}
-          style={{
-            paddingVertical: 12,
-            paddingHorizontal: 12,
-            borderRadius: 12,
-            borderCurve: 'continuous',
-            backgroundColor: busy ? colors.disabled : colors.primary,
-          }}
-        >
-          <Text selectable style={{ color: colors.primaryText, textAlign: 'center', fontWeight: '800' }}>
-            Create pending order
-          </Text>
-        </Pressable>
-      </View>
-
-      <View style={{ gap: 10 }}>
-        <Text selectable style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>
-          Drivers
-        </Text>
-        {drivers.length === 0 ? <Text selectable style={{ color: colors.mutedText }}>No drivers yet.</Text> : null}
-        {drivers.map((d) => (
-          <View
-            key={d.id}
-            style={{
-              padding: 12,
-              borderRadius: 14,
-              borderCurve: 'continuous',
-              backgroundColor: colors.card,
-              gap: 6,
-            }}
-          >
-            <Text selectable style={{ fontWeight: '800', color: colors.text }}>
-              {d.id}
-            </Text>
-            <Text selectable style={{ color: colors.text }}>
-              {d.isOnline ? 'online' : 'offline'} · {d.status}
-            </Text>
-          </View>
-        ))}
-      </View>
-
-      <View style={{ gap: 10 }}>
-        <Text selectable style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>
-          Orders
-        </Text>
-        {orders.length === 0 ? <Text selectable style={{ color: colors.mutedText }}>No orders yet.</Text> : null}
-        {orders.map((o) => (
-          <View
-            key={o.id}
-            style={{
-              padding: 12,
-              borderRadius: 14,
-              borderCurve: 'continuous',
-              backgroundColor: colors.card,
-              gap: 8,
-            }}
-          >
-            <View style={{ gap: 4 }}>
-              <Pressable onPress={() => setSelectedOrderId(o.id)}>
-                <Text selectable style={{ fontWeight: '800', color: colors.text }}>
+        <View style={{ gap: 12 }}>
+          {shownOrders.slice(0, 6).map((o) => (
+            <View
+              key={o.id}
+              style={{
+                padding: 14,
+                borderRadius: 18,
+                borderCurve: 'continuous',
+                backgroundColor: colors.card,
+                gap: 10,
+              }}
+            >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text selectable style={{ color: colors.text, fontWeight: '900' }}>
                   {o.id}
                 </Text>
-              </Pressable>
-              <Text selectable style={{ color: colors.text }}>
-                status: {o.status}
-                {o.driverId ? ` · driver: ${o.driverId}` : ''}
-              </Text>
-              <Text selectable style={{ color: colors.mutedText }}>
-                payment: {(o.paymentMethod ?? 'cash').toUpperCase()} · {(o.paymentStatus ?? 'unpaid').toUpperCase()}
-              </Text>
+                <Pressable
+                  onPress={() => router.push({ pathname: '/(app)/(admin)/orders', params: { focus: o.id } })}
+                  style={{
+                    padding: 10,
+                    borderRadius: 999,
+                    borderCurve: 'continuous',
+                    backgroundColor: colors.secondary,
+                  }}
+                >
+                  <FontAwesome name="arrow-right" size={14} color={colors.text} />
+                </Pressable>
+              </View>
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Pressable
+                  disabled={o.status !== 'pending'}
+                  onPress={() => assignFirstIdle(o.id)}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: 999,
+                    borderCurve: 'continuous',
+                    backgroundColor: o.status === 'pending' ? colors.primary : colors.disabled,
+                    marginRight: 10,
+                  }}
+                >
+                  <Text selectable style={{ textAlign: 'center', color: colors.primaryText, fontWeight: '900' }}>
+                    ASSIGN
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => router.push({ pathname: '/(app)/(admin)/orders', params: { focus: o.id } })}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 12,
+                    borderRadius: 999,
+                    borderCurve: 'continuous',
+                    backgroundColor: colors.background,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                  }}
+                >
+                  <Text selectable style={{ textAlign: 'center', color: colors.text, fontWeight: '900' }}>
+                    DETAILS
+                  </Text>
+                </Pressable>
+              </View>
             </View>
-
-            {o.status === 'pending' ? (
-              <Pressable
-                onPress={() => assignFirstIdle(o.id)}
-                style={{
-                  paddingVertical: 10,
-                  paddingHorizontal: 12,
-                  borderRadius: 12,
-                  borderCurve: 'continuous',
-                  backgroundColor: colors.primary,
-                }}
-              >
-                <Text selectable style={{ color: colors.primaryText, textAlign: 'center', fontWeight: '800' }}>
-                  Assign first idle driver
-                </Text>
-              </Pressable>
-            ) : null}
-
-            {o.driverId && (o.status === 'assigned' || o.status === 'picked') ? (
-              <Pressable
-                onPress={() => reassignFirstIdle(o)}
-                style={{
-                  paddingVertical: 10,
-                  paddingHorizontal: 12,
-                  borderRadius: 12,
-                  borderCurve: 'continuous',
-                  backgroundColor: colors.secondary,
-                }}
-              >
-                <Text selectable style={{ textAlign: 'center', fontWeight: '800', color: colors.text }}>
-                  Reassign to idle driver
-                </Text>
-              </Pressable>
-            ) : null}
-          </View>
-        ))}
+          ))}
+        </View>
       </View>
     </ScrollView>
   );

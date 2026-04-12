@@ -9,13 +9,12 @@ import { useAppTheme } from '@/src/theme/theme';
 export default function SelectRoleScreen() {
   const { colors } = useAppTheme();
   const [role, setRole] = React.useState<AppRole>('user');
-  const [adminId, setAdminId] = React.useState('');
   const [busy, setBusy] = React.useState(false);
 
   async function handleContinue() {
     setBusy(true);
     try {
-      await setCurrentUserRole({ role, adminId: adminId.trim() || undefined });
+      await setCurrentUserRole({ role });
       router.replace('/');
     } catch (e: any) {
       Alert.alert('Could not save role', e?.message ?? 'Unknown error');
@@ -35,7 +34,7 @@ export default function SelectRoleScreen() {
       </Text>
 
       <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
-        {(['user', 'driver', 'admin'] as const).map((r) => {
+        {(['user', 'admin'] as const).map((r) => {
           const selected = r === role;
           return (
             <Pressable
@@ -59,30 +58,6 @@ export default function SelectRoleScreen() {
           );
         })}
       </View>
-
-      {role === 'driver' ? (
-        <View style={{ gap: 8 }}>
-          <Text selectable style={{ color: colors.text }}>
-            Admin ID
-          </Text>
-          <TextInput
-            value={adminId}
-            onChangeText={setAdminId}
-            placeholder="Paste your adminId"
-            placeholderTextColor={colors.mutedText}
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={{
-              borderWidth: 1,
-              borderColor: colors.border,
-              padding: 12,
-              borderRadius: 12,
-              borderCurve: 'continuous',
-              color: colors.text,
-            }}
-          />
-        </View>
-      ) : null}
 
       <Pressable
         disabled={busy}

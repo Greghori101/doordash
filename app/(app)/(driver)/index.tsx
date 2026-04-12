@@ -5,6 +5,7 @@ import React from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { DriverMap } from '@/components/driver-map';
+import { useBatteryStatus } from '@/src/driver/use-battery';
 import { firestore } from '@/src/firebase/client';
 import { startDriverBackgroundLocation, stopDriverBackgroundLocation } from '@/src/location/background';
 import { writeDriverLocationToRTDB } from '@/src/location/rtdb-location';
@@ -19,7 +20,15 @@ type OrderDoc = {
   dropoffLocation?: any;
   updatedAt?: any;
   driverAcceptedAt?: any;
+  price?: number;
 };
+
+function formatLatLng(value: any) {
+  const lat = value?.latitude ?? value?._lat ?? null;
+  const lng = value?.longitude ?? value?._long ?? null;
+  if (typeof lat !== 'number' || typeof lng !== 'number') return '—';
+  return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+}
 
 export default function DriverHome() {
   const { colors } = useAppTheme();
@@ -30,6 +39,7 @@ export default function DriverHome() {
   const [coords, setCoords] = React.useState<{ lat: number; lng: number } | null>(null);
   const [orders, setOrders] = React.useState<OrderDoc[]>([]);
   const watchRef = React.useRef<Location.LocationSubscription | null>(null);
+  const battery = useBatteryStatus();
 
   React.useEffect(() => {
     if (!uid) return;
@@ -148,145 +158,275 @@ export default function DriverHome() {
       style={{ backgroundColor: colors.background }}
       contentContainerStyle={{ padding: 16, gap: 16 }}
     >
-      <View style={{ gap: 6 }}>
-        <Text selectable style={{ fontSize: 20, fontWeight: '800', color: colors.text }}>
-          Status
-        </Text>
-        <Text selectable style={{ color: colors.mutedText }}>
-          {isOnline ? 'online' : 'offline'}
-          {coords ? ` · ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : ''}
-        </Text>
-      </View>
-
-      <View style={{ height: 220, borderRadius: 16, borderCurve: 'continuous', overflow: 'hidden' }}>
-        <DriverMap driver={coords ? { latitude: coords.lat, longitude: coords.lng } : null} />
-      </View>
-
-      <Pressable
-        onPress={isOnline ? stopTracking : startTracking}
+      <View
         style={{
-          paddingVertical: 14,
-          paddingHorizontal: 12,
-          borderRadius: 14,
+          borderRadius: 18,
           borderCurve: 'continuous',
-          backgroundColor: isOnline ? colors.secondary : colors.primary,
+          backgroundColor: colors.card,
+          padding: 16,
+          gap: 10,
         }}
       >
-        <Text selectable style={{ color: isOnline ? colors.text : colors.primaryText, textAlign: 'center', fontWeight: '800' }}>
-          {isOnline ? 'Go offline' : 'Go online'}
+        <Text selectable style={{ color: colors.mutedText, fontWeight: '900', letterSpacing: 1, fontSize: 11 }}>
+          SYSTEM STATUS
         </Text>
-      </Pressable>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: isOnline ? '#16A34A' : colors.mutedText }} />
+          <Text selectable style={{ fontWeight: '900', color: isOnline ? '#16A34A' : colors.mutedText, letterSpacing: 1 }}>
+            {isOnline ? 'ONLINE' : 'OFFLINE'}
+          </Text>
+        </View>
 
-      <View style={{ gap: 10 }}>
-        <Text selectable style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>
-          Assigned Orders
+        <View style={{ gap: 4 }}>
+          <Text selectable style={{ color: colors.mutedText, fontWeight: '900', letterSpacing: 1, fontSize: 11 }}>
+            COORDINATES
+          </Text>
+          <Text selectable style={{ color: colors.text, fontWeight: '800', fontVariant: ['tabular-nums'] }}>
+            {coords ? `${coords.lat.toFixed(4)}° N, ${coords.lng.toFixed(4)}° W` : '—'}
+          </Text>
+        </View>
+
+        <View style={{ gap: 4 }}>
+          <Text selectable style={{ color: colors.mutedText, fontWeight: '900', letterSpacing: 1, fontSize: 11 }}>
+            BATTERY
+          </Text>
+          <Text selectable style={{ color: '#16A34A', fontWeight: '900' }}>
+            {battery.percent == null ? '—' : `${battery.percent}%`} {battery.isCharging ? '(CHARGING)' : ''}
+          </Text>
+        </View>
+
+        <Pressable
+          onPress={isOnline ? stopTracking : startTracking}
+          style={{
+            paddingVertical: 14,
+            borderRadius: 16,
+            borderCurve: 'continuous',
+            backgroundColor: colors.primary,
+            marginTop: 6,
+          }}
+        >
+          <Text selectable style={{ color: colors.primaryText, textAlign: 'center', fontWeight: '900', letterSpacing: 1 }}>
+            {isOnline ? 'GO OFFLINE' : 'GO ONLINE'}
+          </Text>
+        </Pressable>
+      </View>
+
+      <View style={{ height: 220, borderRadius: 18, borderCurve: 'continuous', overflow: 'hidden', backgroundColor: colors.card }}>
+        <DriverMap driver={coords ? { latitude: coords.lat, longitude: coords.lng } : null} />
+        <Pressable
+          onPress={async () => {
+            const fg = await Location.requestForegroundPermissionsAsync();
+            if (!fg.granted) return;
+            const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+            setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          }}
+          style={{
+            position: 'absolute',
+            right: 12,
+            top: 12,
+            width: 38,
+            height: 38,
+            borderRadius: 12,
+            borderCurve: 'continuous',
+            backgroundColor: colors.background,
+            borderWidth: 1,
+            borderColor: colors.border,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text selectable style={{ fontWeight: '900', color: colors.text }}>
+            ⦿
+          </Text>
+        </Pressable>
+      </View>
+
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <Text selectable style={{ color: colors.text, fontWeight: '900', letterSpacing: 1 }}>
+          ACTIVE MANIFEST
         </Text>
-        {orders.length === 0 ? <Text selectable style={{ color: colors.mutedText }}>No assigned orders yet.</Text> : null}
-        {orders.map((o) => (
-          <View
-            key={o.id}
-            style={{
-              padding: 12,
-              borderRadius: 14,
-              borderCurve: 'continuous',
-              backgroundColor: colors.card,
-              gap: 6,
-            }}
-          >
-            <Pressable onPress={() => router.push(`/(app)/(driver)/orders/${o.id}`)}>
-              <Text selectable style={{ fontWeight: '800', color: colors.text }}>
-                {o.id}
-              </Text>
-            </Pressable>
-            <Text selectable style={{ color: colors.text }}>status: {o.status}</Text>
-            {o.status === 'assigned' && !o.driverAcceptedAt ? (
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
-                <Pressable
-                  onPress={() => acceptOrder(o.id)}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 10,
-                    paddingHorizontal: 12,
-                    borderRadius: 12,
-                    borderCurve: 'continuous',
-                    backgroundColor: colors.primary,
-                  }}
-                >
-                  <Text selectable style={{ color: colors.primaryText, textAlign: 'center', fontWeight: '800' }}>
-                    Accept
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => rejectOrder(o.id)}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 10,
-                    paddingHorizontal: 12,
-                    borderRadius: 12,
-                    borderCurve: 'continuous',
-                    backgroundColor: colors.secondary,
-                  }}
-                >
-                  <Text selectable style={{ textAlign: 'center', fontWeight: '800', color: colors.text }}>
-                    Reject
-                  </Text>
-                </Pressable>
-              </View>
-            ) : null}
+        <Text selectable style={{ color: colors.mutedText, fontWeight: '900', letterSpacing: 1, fontSize: 11 }}>
+          {orders.filter((o) => o.status !== 'delivered' && o.status !== 'cancelled').length} ORDERS PENDING
+        </Text>
+      </View>
 
-            {o.status === 'assigned' && o.driverAcceptedAt ? (
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 6 }}>
-                <Pressable
-                  onPress={() => markPicked(o.id)}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 10,
-                    paddingHorizontal: 12,
-                    borderRadius: 12,
-                    borderCurve: 'continuous',
-                    backgroundColor: colors.primary,
-                  }}
-                >
-                  <Text selectable style={{ color: colors.primaryText, textAlign: 'center', fontWeight: '800' }}>
-                    Mark picked up
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => rejectOrder(o.id)}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 10,
-                    paddingHorizontal: 12,
-                    borderRadius: 12,
-                    borderCurve: 'continuous',
-                    backgroundColor: colors.secondary,
-                  }}
-                >
-                  <Text selectable style={{ textAlign: 'center', fontWeight: '800', color: colors.text }}>
-                    Reject
-                  </Text>
-                </Pressable>
-              </View>
-            ) : null}
-            {o.status === 'picked' ? (
-              <Pressable
-                onPress={() => markDelivered(o.id)}
+      <View style={{ gap: 12 }}>
+        {orders
+          .filter((o) => o.status !== 'delivered' && o.status !== 'cancelled')
+          .slice(0, 6)
+          .map((o) => {
+            const showAcceptReject = o.status === 'assigned' && !o.driverAcceptedAt;
+            const showPicked = o.status === 'accepted';
+            const showDelivered = o.status === 'picked';
+
+            return (
+              <View
+                key={o.id}
                 style={{
-                  paddingVertical: 10,
-                  paddingHorizontal: 12,
-                  borderRadius: 12,
+                  padding: 14,
+                  borderRadius: 18,
                   borderCurve: 'continuous',
-                  backgroundColor: colors.primary,
-                  marginTop: 6,
+                  backgroundColor: colors.card,
+                  gap: 10,
                 }}
               >
-                <Text selectable style={{ color: colors.primaryText, textAlign: 'center', fontWeight: '800' }}>
-                  Mark delivered
-                </Text>
-              </Pressable>
-            ) : null}
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text selectable style={{ fontWeight: '900', color: colors.text }}>
+                    #{o.id.slice(0, 10).toUpperCase()}
+                  </Text>
+                  {showAcceptReject ? (
+                    <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: '#D7F5DF' }}>
+                      <Text selectable style={{ fontWeight: '900', color: '#0B5A2A', fontSize: 12 }}>
+                        NEW
+                      </Text>
+                    </View>
+                  ) : showDelivered ? (
+                    <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: '#EAEAEA' }}>
+                      <Text selectable style={{ fontWeight: '900', color: 'rgba(0,0,0,0.7)', fontSize: 12 }}>
+                        PICKED UP
+                      </Text>
+                    </View>
+                  ) : showPicked ? (
+                    <View style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: '#EAEAEA' }}>
+                      <Text selectable style={{ fontWeight: '900', color: 'rgba(0,0,0,0.7)', fontSize: 12 }}>
+                        ACCEPTED
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                <Pressable onPress={() => router.push(`/(app)/(driver)/orders/${o.id}`)} style={{ gap: 6 }}>
+                  <Text selectable style={{ color: colors.text, fontWeight: '800', fontSize: 12 }}>
+                    ▶ ORIGIN: {formatLatLng(o.pickupLocation)}
+                  </Text>
+                  <Text selectable style={{ color: colors.text, fontWeight: '800', fontSize: 12 }}>
+                    ● DEST: {formatLatLng(o.dropoffLocation)}
+                  </Text>
+                </Pressable>
+
+                {showAcceptReject ? (
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <Pressable
+                      onPress={() => rejectOrder(o.id)}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 12,
+                        borderRadius: 14,
+                        borderCurve: 'continuous',
+                        backgroundColor: colors.background,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                      }}
+                    >
+                      <Text selectable style={{ textAlign: 'center', fontWeight: '900', color: colors.text }}>
+                        REJECT
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => acceptOrder(o.id)}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 12,
+                        borderRadius: 14,
+                        borderCurve: 'continuous',
+                        backgroundColor: colors.primary,
+                      }}
+                    >
+                      <Text selectable style={{ textAlign: 'center', fontWeight: '900', color: colors.primaryText }}>
+                        ACCEPT
+                      </Text>
+                    </Pressable>
+                  </View>
+                ) : null}
+
+                {showPicked ? (
+                  <Pressable
+                    onPress={() => markPicked(o.id)}
+                    style={{
+                      paddingVertical: 12,
+                      borderRadius: 14,
+                      borderCurve: 'continuous',
+                      backgroundColor: colors.primary,
+                    }}
+                  >
+                    <Text selectable style={{ textAlign: 'center', fontWeight: '900', color: colors.primaryText }}>
+                      MARK PICKED UP
+                    </Text>
+                  </Pressable>
+                ) : null}
+
+                {showDelivered ? (
+                  <Pressable
+                    onPress={() => markDelivered(o.id)}
+                    style={{
+                      paddingVertical: 12,
+                      borderRadius: 14,
+                      borderCurve: 'continuous',
+                      backgroundColor: colors.primary,
+                    }}
+                  >
+                    <Text selectable style={{ textAlign: 'center', fontWeight: '900', color: colors.primaryText }}>
+                      MARK DELIVERED
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            );
+          })}
+      </View>
+
+      <View
+        style={{
+          padding: 16,
+          borderRadius: 18,
+          borderCurve: 'continuous',
+          backgroundColor: colors.primary,
+          gap: 12,
+        }}
+      >
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <View style={{ gap: 6 }}>
+            <Text selectable style={{ color: colors.primaryText, fontWeight: '900', letterSpacing: 1, fontSize: 11 }}>
+              TODAY'S SHIFT
+            </Text>
+            <Text selectable style={{ color: '#22C55E', fontWeight: '900', fontSize: 22, fontVariant: ['tabular-nums'] }}>
+              $
+              {orders
+                .filter((o) => o.status === 'delivered')
+                .reduce((sum, o) => sum + (o.price ?? 0), 0)
+                .toFixed(2)}
+            </Text>
           </View>
-        ))}
+          <View style={{ gap: 6 }}>
+            <Text selectable style={{ color: colors.primaryText, fontWeight: '900', letterSpacing: 1, fontSize: 11 }}>
+              DELIVERIES
+            </Text>
+            <Text selectable style={{ color: colors.primaryText, fontWeight: '900', fontSize: 22, fontVariant: ['tabular-nums'] }}>
+              {orders.filter((o) => o.status === 'delivered').length}
+            </Text>
+          </View>
+        </View>
+
+        <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <View style={{ gap: 6 }}>
+            <Text selectable style={{ color: colors.primaryText, fontWeight: '900', letterSpacing: 1, fontSize: 11 }}>
+              MILES
+            </Text>
+            <Text selectable style={{ color: colors.primaryText, fontWeight: '900', fontSize: 22, fontVariant: ['tabular-nums'] }}>
+              48.2
+            </Text>
+          </View>
+          <View style={{ gap: 6 }}>
+            <Text selectable style={{ color: colors.primaryText, fontWeight: '900', letterSpacing: 1, fontSize: 11 }}>
+              RATING
+            </Text>
+            <Text selectable style={{ color: '#22C55E', fontWeight: '900', fontSize: 22, fontVariant: ['tabular-nums'] }}>
+              4.9
+            </Text>
+          </View>
+        </View>
       </View>
     </ScrollView>
   );

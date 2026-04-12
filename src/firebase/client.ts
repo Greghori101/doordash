@@ -1,8 +1,10 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApps, initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, initializeAuth } from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
 import { getFirestore } from 'firebase/firestore';
 import { getFunctions } from 'firebase/functions';
+import { Platform } from 'react-native';
 
 function requiredEnv(name: string) {
   const value = process.env[name];
@@ -23,7 +25,29 @@ const firebaseConfig = {
 };
 
 export const firebaseApp = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-export const firebaseAuth = getAuth(firebaseApp);
+export const firebaseAuth = (() => {
+  if (Platform.OS === 'web') {
+    return getAuth(firebaseApp);
+  }
+
+  try {
+    const authModule: any = require('firebase/auth');
+    const getReactNativePersistence =
+      authModule?.getReactNativePersistence ?? authModule?.default?.getReactNativePersistence ?? null;
+    if (!getReactNativePersistence) {
+      return getAuth(firebaseApp);
+    }
+    return initializeAuth(firebaseApp, { persistence: getReactNativePersistence(AsyncStorage) });
+  } catch (e: any) {
+    const code = String(e?.code ?? '');
+    const message = String(e?.message ?? '');
+    if (code === 'auth/already-initialized' || message.includes('already-initialized')) {
+      return getAuth(firebaseApp);
+    }
+    return getAuth(firebaseApp);
+  }
+})();
 export const firestore = getFirestore(firebaseApp);
 export const rtdb = getDatabase(firebaseApp);
-export const functionsClient = getFunctions(firebaseApp);
+const functionsRegion = process.env.EXPO_PUBLIC_FIREBASE_FUNCTIONS_REGION || 'us-central1';
+export const functionsClient = getFunctions(firebaseApp, functionsRegion);
