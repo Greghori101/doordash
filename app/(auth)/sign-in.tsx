@@ -1,14 +1,18 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import * as Google from 'expo-auth-session/providers/google';
 import { router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+import { GoogleAuthProvider, signInWithCredential, signInWithEmailAndPassword } from 'firebase/auth';
 import React from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
-import { requestEmailOtp } from '@/src/auth/email-otp-client';
-import { signInWithAppleWeb, signInWithGoogleWeb } from '@/src/auth/federated-web';
+import { sendEmailSignInLink } from '@/src/auth/email-link-auth';
+import { signInWithApple } from '@/src/auth/social-auth';
 import { firebaseAuth } from '@/src/firebase/client';
 import { useAuthStore } from '@/src/store/auth-store';
 import { useAppTheme } from '@/src/theme/theme';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+
+WebBrowser.maybeCompleteAuthSession();
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -22,6 +26,43 @@ export default function SignInScreen() {
   const [password, setPassword] = React.useState('');
   const [mode, setMode] = React.useState<'otp' | 'password'>('otp');
   const [busy, setBusy] = React.useState(false);
+
+  const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+  const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
+  const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+
+  // Use platform client ID if available, fall back to web client ID for OAuth web flow
+  const [googleRequest, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
+    androidClientId: androidClientId ?? webClientId ?? 'not-configured',
+    iosClientId: iosClientId ?? webClientId ?? 'not-configured',
+    webClientId,
+  });
+
+  const googleConfigured =
+    Platform.OS === 'web'
+      ? !!webClientId
+      : !!(androidClientId ?? iosClientId ?? webClientId);
+
+  // Handle Google OAuth response
+  React.useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      const idToken =
+        googleResponse.params?.id_token ??
+        googleResponse.authentication?.idToken ??
+        null;
+      const accessToken = googleResponse.authentication?.accessToken ?? null;
+      if (idToken || accessToken) {
+        const credential = GoogleAuthProvider.credential(idToken, accessToken);
+        signInWithCredential(firebaseAuth, credential).catch((e: any) =>
+          Alert.alert('Google sign-in failed', e?.message ?? 'Unknown error')
+        );
+      } else {
+        Alert.alert('Google sign-in', 'No credentials received. Try again.');
+      }
+    } else if (googleResponse?.type === 'error') {
+      Alert.alert('Google sign-in', googleResponse.error?.message ?? 'Sign-in failed');
+    }
+  }, [googleResponse]);
 
   React.useEffect(() => {
     if (isBootstrapping) return;
@@ -37,28 +78,22 @@ export default function SignInScreen() {
     (mode === 'otp' ? true : password.length > 0);
 
   async function handleSendCode() {
-    if (!normalizedEmail) {
-      Alert.alert('Missing email', 'Enter your email address.');
-      return;
-    }
     if (!isValidEmail(normalizedEmail)) {
       Alert.alert('Invalid email', 'Enter a valid email address.');
       return;
     }
     setBusy(true);
     try {
-      const result = await requestEmailOtp({ email: normalizedEmail });
-      router.push({ pathname: '/(auth)/verify-email', params: { email: normalizedEmail, expiresAtMs: String(result.expiresAtMs) } });
+      await sendEmailSignInLink(normalizedEmail);
+      router.push({ pathname: '/(auth)/verify-email', params: { email: normalizedEmail } });
+    } catch (e: any) {
+      Alert.alert('Could not send link', e?.message ?? 'Unknown error');
     } finally {
       setBusy(false);
     }
   }
 
   async function handlePasswordSignIn() {
-    if (!normalizedEmail) {
-      Alert.alert('Missing email', 'Enter your email address.');
-      return;
-    }
     if (!isValidEmail(normalizedEmail)) {
       Alert.alert('Invalid email', 'Enter a valid email address.');
       return;
@@ -77,6 +112,41 @@ export default function SignInScreen() {
       setBusy(false);
     }
   }
+
+  async function handleAppleSignIn() {
+    setBusy(true);
+    try {
+      await signInWithApple();
+    } catch (e: any) {
+      if (e?.code !== 'ERR_REQUEST_CANCELED') {
+        Alert.alert('Apple sign-in', e?.message ?? 'Sign-in failed');
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    if (!googleConfigured) {
+      Alert.alert('Google sign-in', 'Set EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID / IOS_CLIENT_ID in .env to enable Google sign-in.');
+      return;
+    }
+    if (Platform.OS === 'web') {
+      setBusy(true);
+      try {
+        const { signInWithGoogleWeb } = await import('@/src/auth/social-auth');
+        await signInWithGoogleWeb();
+      } catch (e: any) {
+        Alert.alert('Google sign-in', e?.message ?? 'Sign-in failed');
+      } finally {
+        setBusy(false);
+      }
+    } else {
+      promptGoogleAsync();
+    }
+  }
+
+  const showApple = Platform.OS === 'ios' || Platform.OS === 'web';
 
   return (
     <ScrollView
@@ -120,25 +190,28 @@ export default function SignInScreen() {
           backgroundColor: colors.background,
         }}
       >
-        <Pressable
-          onPress={() => signInWithAppleWeb().catch((e: any) => Alert.alert('Apple sign-in', e?.message ?? 'Not available.'))}
-          style={{
-            paddingVertical: 14,
-            paddingHorizontal: 12,
-            borderRadius: 14,
-            borderCurve: 'continuous',
-            borderWidth: 2,
-            borderColor: colors.text,
-            opacity: process.env.EXPO_OS === 'web' ? 1 : 0.55,
-          }}
-        >
-          <Text selectable style={{ textAlign: 'center', fontWeight: '900', letterSpacing: 1, color: colors.text }}>
-              CONTINUE WITH APPLE
-          </Text>
-        </Pressable>
+        {showApple ? (
+          <Pressable
+            onPress={handleAppleSignIn}
+            disabled={busy}
+            style={{
+              paddingVertical: 14,
+              paddingHorizontal: 12,
+              borderRadius: 14,
+              borderCurve: 'continuous',
+              borderWidth: 2,
+              borderColor: colors.text,
+            }}
+          >
+            <Text selectable style={{ textAlign: 'center', fontWeight: '900', letterSpacing: 1, color: colors.text }}>
+               CONTINUE WITH APPLE
+            </Text>
+          </Pressable>
+        ) : null}
 
         <Pressable
-          onPress={() => signInWithGoogleWeb().catch((e: any) => Alert.alert('Google sign-in', e?.message ?? 'Not available.'))}
+          onPress={handleGoogleSignIn}
+          disabled={busy}
           style={{
             paddingVertical: 14,
             paddingHorizontal: 12,
@@ -146,7 +219,7 @@ export default function SignInScreen() {
             borderCurve: 'continuous',
             borderWidth: 2,
             borderColor: colors.text,
-            opacity: process.env.EXPO_OS === 'web' ? 1 : 0.55,
+            opacity: googleConfigured ? 1 : 0.45,
           }}
         >
           <Text selectable style={{ textAlign: 'center', fontWeight: '900', letterSpacing: 1, color: colors.text }}>
@@ -178,7 +251,7 @@ export default function SignInScreen() {
                 }}
               >
                 <Text selectable style={{ textAlign: 'center', fontWeight: '900', letterSpacing: 1, color: selected ? colors.primaryText : colors.text }}>
-                  {k === 'otp' ? 'EMAIL OTP' : 'EMAIL / PASS'}
+                  {k === 'otp' ? 'EMAIL CODE' : 'PASSWORD'}
                 </Text>
               </Pressable>
             );
@@ -195,7 +268,7 @@ export default function SignInScreen() {
             keyboardType="email-address"
             value={email}
             onChangeText={setEmail}
-            placeholder="LOGISTICS@DOORDROP.COM"
+            placeholder="you@example.com"
             placeholderTextColor={colors.mutedText}
             style={{
               backgroundColor: colors.card,
@@ -203,13 +276,9 @@ export default function SignInScreen() {
               borderRadius: 14,
               borderCurve: 'continuous',
               color: colors.text,
-              fontWeight: '900',
-              letterSpacing: 1,
+              fontWeight: '700',
             }}
           />
-          <Text selectable style={{ color: colors.mutedText, fontWeight: '700', letterSpacing: 1, fontSize: 12 }}>
-            {mode === 'otp' ? 'VERIFICATION REQUIRED' : 'LOGIN ONLY (NO SIGNUP)'}
-          </Text>
         </View>
 
         {mode === 'password' ? (
@@ -232,8 +301,7 @@ export default function SignInScreen() {
                   borderRadius: 14,
                   borderCurve: 'continuous',
                   color: colors.text,
-                  fontWeight: '900',
-                  letterSpacing: 1,
+                  fontWeight: '700',
                 }}
               />
             </View>
@@ -272,15 +340,7 @@ export default function SignInScreen() {
         )}
       </View>
 
-      <View style={{ alignItems: 'center', paddingTop: 18, gap: 8 }}>
-        <Text selectable style={{ color: colors.mutedText, fontWeight: '700', letterSpacing: 2, fontSize: 12 }}>
-          V.4.0.1_STABLE    SECURE_SERVER_09
-        </Text>
-        <View style={{ flexDirection: 'row', gap: 6 }}>
-          <View style={{ width: 26, height: 3, borderRadius: 999, backgroundColor: colors.text, opacity: 0.3 }} />
-          <View style={{ width: 26, height: 3, borderRadius: 999, backgroundColor: colors.text, opacity: 0.3 }} />
-          <View style={{ width: 26, height: 3, borderRadius: 999, backgroundColor: '#F5A623' }} />
-        </View>
+      <View style={{ alignItems: 'center', paddingTop: 4, gap: 8 }}>
         <Pressable onPress={() => router.push('/(auth)/sign-up')} style={{ paddingTop: 8 }}>
           <Text selectable style={{ color: colors.text, fontWeight: '800' }}>
             Create account

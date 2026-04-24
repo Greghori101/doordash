@@ -1,12 +1,14 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import * as Linking from 'expo-linking';
+import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { startAuthBootstrap } from '@/src/auth/bootstrap';
+import { completeEmailSignIn, isEmailSignInLink } from '@/src/auth/email-link-auth';
 import '@/src/location/background';
 import { registerForPushNotificationsAsync } from '@/src/notifications/register';
 import { useAuthStore } from '@/src/store/auth-store';
@@ -45,6 +47,23 @@ export default function RootLayout() {
   useEffect(() => {
     const unsubscribe = startAuthBootstrap();
     return unsubscribe;
+  }, []);
+
+  // Handle Firebase email sign-in links opened on this device
+  useEffect(() => {
+    async function handleUrl(url: string) {
+      if (!isEmailSignInLink(url)) return;
+      try {
+        const ok = await completeEmailSignIn(url);
+        if (ok) router.replace('/');
+      } catch {
+        // If no pending email saved, user needs to enter it manually via verify-email screen
+      }
+    }
+
+    Linking.getInitialURL().then((url) => { if (url) handleUrl(url); });
+    const sub = Linking.addEventListener('url', ({ url }) => handleUrl(url));
+    return () => sub.remove();
   }, []);
 
   if (!loaded) {

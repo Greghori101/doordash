@@ -66,6 +66,14 @@ export default function AdminLayout() {
         }}
       />
       <Tabs.Screen
+        name="products"
+        options={{
+          title: 'Products',
+          tabBarLabel: 'Products',
+          tabBarIcon: ({ color }) => <FontAwesome name="tag" size={18} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',

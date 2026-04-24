@@ -74,6 +74,15 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /products/{productId} {
+      // Any signed-in user can read products (to browse catalog)
+      allow read: if isSignedIn();
+      // Only admin of the owning tenant can create/update/delete
+      allow create: if isSignedIn() && isAdmin() && request.resource.data.adminId == adminId();
+      allow update: if isSignedIn() && isAdmin() && resource.data.adminId == adminId();
+      allow delete: if isSignedIn() && isAdmin() && resource.data.adminId == adminId();
+    }
+
     match /order_events/{eventId} {
       allow read: if isSignedIn();
       allow create: if false;

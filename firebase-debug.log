@@ -1,0 +1,30 @@
+[debug] [2026-04-13T00:01:22.783Z] ----------------------------------------------------------------------
+[debug] [2026-04-13T00:01:22.784Z] Command:       /Users/macbook/.volta/tools/image/node/24.13.0/bin/node /Users/macbook/.volta/tools/image/packages/firebase-tools/bin/firebase --debug projects:list
+[debug] [2026-04-13T00:01:22.784Z] CLI Version:   15.13.0
+[debug] [2026-04-13T00:01:22.784Z] Platform:      darwin
+[debug] [2026-04-13T00:01:22.784Z] Node Version:  v24.13.0
+[debug] [2026-04-13T00:01:22.784Z] Time:          Mon Apr 13 2026 01:01:22 GMT+0100 (Central European Standard Time)
+[debug] [2026-04-13T00:01:22.784Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-04-13T00:01:22.881Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-04-13T00:01:22.881Z] > authorizing via signed-in user (e.souala@esi-sba.dz)
+[debug] [2026-04-13T00:01:22.883Z] Checked if tokens are valid: true, expires at: 1776039568232
+[debug] [2026-04-13T00:01:22.883Z] Checked if tokens are valid: true, expires at: 1776039568232
+[debug] [2026-04-13T00:01:22.884Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[debug] [2026-04-13T00:01:23.590Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2026-04-13T00:01:23.590Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[info] ┌──────────────────────┬──────────────────────┬────────────────┬──────────────────────┐
+│ Project Display Name │ Project ID           │ Project Number │ Resource Location ID │
+├──────────────────────┼──────────────────────┼────────────────┼──────────────────────┤
+│ ai real state agency │ ai-real-state-agency │ 916804318513   │ [Not specified]      │
+├──────────────────────┼──────────────────────┼────────────────┼──────────────────────┤
+│ DoorDash             │ doordash-9af85       │ 970123801789   │ [Not specified]      │
+├──────────────────────┼──────────────────────┼────────────────┼──────────────────────┤
+│ Open-Desk            │ open-desk-34e9f      │ 1055564031130  │ [Not specified]      │
+├──────────────────────┼──────────────────────┼────────────────┼──────────────────────┤
+│ portfolio-saas       │ portfolio-saas-f66a7 │ 431030430341   │ [Not specified]      │
+├──────────────────────┼──────────────────────┼────────────────┼──────────────────────┤
+│ twreed               │ twreed-4277d         │ 789211247983   │ [Not specified]      │
+└──────────────────────┴──────────────────────┴────────────────┴──────────────────────┘
+[info] 
+[info] 5 project(s) total.

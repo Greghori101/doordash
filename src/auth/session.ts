@@ -1,41 +1,50 @@
 import type { AppRole, UserProfile } from '@/src/auth/types';
 import { firebaseAuth, firestore } from '@/src/firebase/client';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 
-export async function getOrCreateUserProfile(user: User): Promise<UserProfile> {
+async function ensureUserDocExists(user: User): Promise<void> {
   const ref = doc(firestore, 'users', user.uid);
   const snap = await getDoc(ref);
-
-  if (snap.exists()) {
-    return snap.data() as UserProfile;
+  if (!snap.exists()) {
+    await setDoc(
+      ref,
+      { id: user.uid, name: user.displayName ?? null, email: user.email ?? null, createdAt: serverTimestamp() },
+      { merge: true }
+    );
   }
-
-  const profile: Omit<UserProfile, 'role'> & { role?: AppRole } = {
-    id: user.uid,
-    name: user.displayName ?? undefined,
-    email: user.email ?? undefined,
-    createdAt: serverTimestamp(),
-  };
-
-  await setDoc(ref, profile, { merge: true });
-  return profile as UserProfile;
 }
 
 export function subscribeToAuthState(
   onChange: (state: { user: User | null; role: AppRole | null; profile: UserProfile | null }) => void
 ) {
-  return onAuthStateChanged(firebaseAuth, async (user) => {
+  let unsubProfile: (() => void) | null = null;
+
+  const unsubAuth = onAuthStateChanged(firebaseAuth, async (user) => {
+    if (unsubProfile) {
+      unsubProfile();
+      unsubProfile = null;
+    }
+
     if (!user) {
       onChange({ user: null, role: null, profile: null });
       return;
     }
 
     try {
-      const profile = await getOrCreateUserProfile(user);
-      onChange({ user, role: profile.role ?? null, profile });
+      await ensureUserDocExists(user);
+      const ref = doc(firestore, 'users', user.uid);
+      unsubProfile = onSnapshot(ref, (snap) => {
+        const profile = snap.exists() ? (snap.data() as UserProfile) : null;
+        onChange({ user, role: profile?.role ?? null, profile });
+      });
     } catch {
       onChange({ user, role: null, profile: null });
     }
   });
+
+  return () => {
+    unsubAuth();
+    if (unsubProfile) unsubProfile();
+  };
 }

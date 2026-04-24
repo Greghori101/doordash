@@ -1,4 +1,5 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { router } from 'expo-router';
 import { signOut } from 'firebase/auth';
 import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
@@ -11,6 +12,14 @@ export default function AccountDisabledScreen() {
   const { colors } = useAppTheme();
   const profile = useAuthStore((s) => s.profile);
   const role = useAuthStore((s) => s.role);
+  const user = useAuthStore((s) => s.user);
+  const isBootstrapping = useAuthStore((s) => s.isBootstrapping);
+
+  React.useEffect(() => {
+    if (!isBootstrapping && !user) {
+      router.replace('/(auth)/sign-in');
+    }
+  }, [isBootstrapping, user]);
   const status = profile?.status ?? 'suspended';
 
   const title = role === 'admin' ? 'AWAITING ACTIVATION' : 'ACCOUNT DISABLED';

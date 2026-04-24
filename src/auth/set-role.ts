@@ -10,10 +10,10 @@ export async function setCurrentUserRole(params: { role: AppRole; adminId?: stri
 
   const baseProfile: Partial<UserProfile> = {
     id: user.uid,
-    name: user.displayName ?? undefined,
-    email: user.email ?? undefined,
+    name: user.displayName ?? null,
+    email: user.email ?? null,
     role: params.role,
-    adminId: params.adminId,
+    adminId: params.adminId ?? null,
     status: params.role === 'admin' ? 'suspended' : 'active',
   };
 

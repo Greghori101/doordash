@@ -332,7 +332,7 @@ export default function UserHome() {
                       </Text>
                     </View>
                     <Text selectable style={{ color: colors.text, fontWeight: '900' }}>
-                      {o.status === 'delivered' ? 'MAIN STREET CAFE TERMINAL' : o.status === 'pending' ? 'GREENWICH LOGISTICS HUB' : 'DOWNTOWN MEDICAL SUPPLIES'}
+                      ORDER #{o.id.slice(0, 8).toUpperCase()}
                     </Text>
                     <Text selectable style={{ color: colors.mutedText, fontWeight: '800', fontSize: 12 }}>
                       DRIVER ID: {o.driverId ? o.driverId : 'SEARCHING...'}
@@ -343,7 +343,7 @@ export default function UserHome() {
                 {showViewMap ? (
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Text selectable style={{ color: colors.mutedText, fontWeight: '900', fontVariant: ['tabular-nums'] }}>
-                      ETA: 14:20
+                      DRIVER: {o.driverId ? o.driverId.slice(0, 8).toUpperCase() : 'SEARCHING...'}
                     </Text>
                     <Pressable
                       onPress={() => router.push(`/(app)/(user)/orders/${o.id}`)}
@@ -367,7 +367,7 @@ export default function UserHome() {
                 {showReceipt ? (
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Text selectable style={{ color: colors.mutedText, fontWeight: '900' }}>
-                      DATE: OCT 12
+                      PAYMENT: {(o as any).paymentMethod?.toUpperCase() ?? '—'}
                     </Text>
                     <Pressable
                       style={{
@@ -460,7 +460,7 @@ export default function UserHome() {
               CURRENT ACTIVE ROUTE
             </Text>
             <Text selectable style={{ color: colors.text, fontWeight: '900' }}>
-              {activeForFeed ? 'PIER 45 → 10TH AVENUE WAREHOUSE' : '—'}
+              {activeForFeed ? `ORDER #${activeForFeed.id.slice(0, 8).toUpperCase()} IN TRANSIT` : 'NO ACTIVE ORDERS'}
             </Text>
           </View>
         </Pressable>
